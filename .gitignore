@@ -29,3 +29,9 @@ gophish_admin.key
 *.exe
 gophish.db*
 gophish
+
+# Infomaniak deploy — per-campaign config and runtime env (never commit)
+deploy/infomaniak/campaign.conf
+deploy/infomaniak/.env
+gophish-db-backup-*.db
+gophish-db-backup-*.db.enc

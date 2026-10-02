@@ -33,6 +33,11 @@ func (d *RestrictedDialer) AllowedHosts() []string {
 
 // SetAllowedHosts sets the list of allowed hosts or IP ranges for the dialer.
 func (d *RestrictedDialer) SetAllowedHosts(allowed []string) error {
+	// Build the full list first and replace it in one shot, so repeated calls
+	// don't accumulate stale entries (previously this appended, which leaked
+	// hosts across reconfigurations) and a parse error leaves the current
+	// configuration untouched.
+	hosts := make([]*net.IPNet, 0, len(allowed))
 	for _, ipRange := range allowed {
 		// For flexibility, try to parse as an IP first since this will
 		// undoubtedly cause issues. If it works, then just append the
@@ -48,8 +53,9 @@ func (d *RestrictedDialer) SetAllowedHosts(allowed []string) error {
 		if err != nil {
 			return fmt.Errorf("provided ip range is not valid CIDR notation: %v", err)
 		}
-		d.allowedHosts = append(d.allowedHosts, parsed)
+		hosts = append(hosts, parsed)
 	}
+	d.allowedHosts = hosts
 	return nil
 }
 

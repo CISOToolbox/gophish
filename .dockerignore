@@ -8,3 +8,11 @@ gophish-bin
 gophish_admin.crt
 gophish_admin.key
 *.log
+
+# Deployment tooling (not needed in the image) + any secrets/backups that
+# could otherwise be baked in by `COPY . .` during a local build.
+deploy
+**/.env
+**/campaign.conf
+*.enc
+gophish-db-backup-*

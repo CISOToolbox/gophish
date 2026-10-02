@@ -335,3 +335,25 @@ func BenchmarkGetCampaign10000(b *testing.B) {
 	}
 	tearDownBenchmark(b)
 }
+
+func (s *ModelsSuite) TestGetCampaignStats(ch *check.C) {
+	c := s.createCampaign(ch)
+	ch.Assert(len(c.Results), check.Equals, 4)
+	// Assign four distinct statuses so each counter must be computed from an
+	// independent query. This regression-tests the GORM v2 statement-reuse bug
+	// where chained Where clauses accumulated and zeroed later counters.
+	statuses := []string{EventSent, EventOpened, EventClicked, EventDataSubmit}
+	for i, st := range statuses {
+		c.Results[i].Status = st
+		ch.Assert(db.Save(&c.Results[i]).Error, check.Equals, nil)
+	}
+	stats, err := getCampaignStats(c.Id)
+	ch.Assert(err, check.Equals, nil)
+	ch.Assert(stats.Total, check.Equals, int64(4))
+	ch.Assert(stats.SubmittedData, check.Equals, int64(1))
+	ch.Assert(stats.ClickedLink, check.Equals, int64(2)) // clicked + submitted
+	ch.Assert(stats.OpenedEmail, check.Equals, int64(3)) // opened + clicked
+	ch.Assert(stats.EmailsSent, check.Equals, int64(4))  // sent + opened
+	ch.Assert(stats.Error, check.Equals, int64(0))
+	ch.Assert(stats.EmailReported, check.Equals, int64(0))
+}

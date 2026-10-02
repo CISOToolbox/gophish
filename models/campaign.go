@@ -266,38 +266,36 @@ func (c *Campaign) generateSendDate(idx int, totalRecipients int) time.Time {
 // It also backfills numbers as appropriate with a running total, so that the values are aggregated.
 func getCampaignStats(cid int64) (CampaignStats, error) {
 	s := CampaignStats{}
-	query := db.Table("results").Where("campaign_id = ?", cid)
-	err := query.Count(&s.Total).Error
-	if err != nil {
+	// Each counter needs its own statement: under GORM v2, reusing a single
+	// *gorm.DB across finisher calls accumulates WHERE clauses on the shared
+	// Statement (so a second ".Where(status=...)" would AND with the first and
+	// return 0). base() returns a fresh, campaign-scoped query every time.
+	base := func() *gorm.DB { return db.Table("results").Where("campaign_id = ?", cid) }
+	if err := base().Count(&s.Total).Error; err != nil {
 		return s, err
 	}
-	query.Where("status=?", EventDataSubmit).Count(&s.SubmittedData)
-	if err != nil {
+	if err := base().Where("status = ?", EventDataSubmit).Count(&s.SubmittedData).Error; err != nil {
 		return s, err
 	}
-	query.Where("status=?", EventClicked).Count(&s.ClickedLink)
-	if err != nil {
+	if err := base().Where("status = ?", EventClicked).Count(&s.ClickedLink).Error; err != nil {
 		return s, err
 	}
-	query.Where("reported=?", true).Count(&s.EmailReported)
-	if err != nil {
+	if err := base().Where("reported = ?", true).Count(&s.EmailReported).Error; err != nil {
 		return s, err
 	}
 	// Every submitted data event implies they clicked the link
 	s.ClickedLink += s.SubmittedData
-	err = query.Where("status=?", EventOpened).Count(&s.OpenedEmail).Error
-	if err != nil {
+	if err := base().Where("status = ?", EventOpened).Count(&s.OpenedEmail).Error; err != nil {
 		return s, err
 	}
 	// Every clicked link event implies they opened the email
 	s.OpenedEmail += s.ClickedLink
-	err = query.Where("status=?", EventSent).Count(&s.EmailsSent).Error
-	if err != nil {
+	if err := base().Where("status = ?", EventSent).Count(&s.EmailsSent).Error; err != nil {
 		return s, err
 	}
 	// Every opened email event implies the email was sent
 	s.EmailsSent += s.OpenedEmail
-	err = query.Where("status=?", Error).Count(&s.Error).Error
+	err := base().Where("status = ?", Error).Count(&s.Error).Error
 	return s, err
 }
 

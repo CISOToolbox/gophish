@@ -1,20 +1,19 @@
-# Minify client side assets (JavaScript)
-FROM node:latest AS build-js
-
-RUN npm install gulp gulp-cli -g
+# Build client side assets (JavaScript/CSS) with esbuild
+FROM node:22-alpine AS build-js
 
 WORKDIR /build
+COPY package.json yarn.lock ./
+RUN corepack enable && yarn install --frozen-lockfile
 COPY . .
-RUN npm install --only=dev
-RUN gulp
+RUN yarn build
 
 
 # Build Golang binary
-FROM golang:1.15.2 AS build-golang
+FROM golang:1.26.8 AS build-golang
 
 WORKDIR /go/src/github.com/gophish/gophish
 COPY . .
-RUN go get -v && go build -v
+RUN go build -v
 
 
 # Runtime container

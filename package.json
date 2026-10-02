@@ -12,9 +12,13 @@
   },
   "homepage": "https://getgophish.com",
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "lint": "biome lint static/js/src/app build.mjs",
+    "lint:fix": "biome lint --write static/js/src/app build.mjs",
+    "format": "biome format --write static/js/src/app build.mjs"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.14",
     "esbuild": "0.28.2"
   },
   "dependencies": {

@@ -8,26 +8,13 @@ import (
 
 	ctx "github.com/gophish/gophish/context"
 	"github.com/gophish/gophish/models"
-	"github.com/gorilla/csrf"
 )
 
-// CSRFExemptPrefixes are a list of routes that are exempt from CSRF protection
+// CSRFExemptPrefixes are a list of route prefixes that are exempt from CSRF
+// protection. These are consumed by the admin server when configuring
+// cross-origin protection bypass patterns.
 var CSRFExemptPrefixes = []string{
 	"/api",
-}
-
-// CSRFExceptions is a middleware that prevents CSRF checks on routes listed in
-// CSRFExemptPrefixes.
-func CSRFExceptions(handler http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		for _, prefix := range CSRFExemptPrefixes {
-			if strings.HasPrefix(r.URL.Path, prefix) {
-				r = csrf.UnsafeSkipCheck(r)
-				break
-			}
-		}
-		handler.ServeHTTP(w, r)
-	}
 }
 
 // Use allows us to stack middleware to process the request

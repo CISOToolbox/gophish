@@ -21,7 +21,6 @@ import (
 	"github.com/gophish/gophish/models"
 	"github.com/gophish/gophish/util"
 	"github.com/gophish/gophish/worker"
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -147,27 +146,23 @@ func (as *AdminServer) registerRoutes() {
 	// Setup static file serving
 	router.PathPrefix("/").Handler(http.FileServer(unindexed.Dir("./static/")))
 
-	// Setup CSRF Protection
-	csrfKey := []byte(as.config.CSRFKey)
-	if len(csrfKey) == 0 {
-		csrfKey = []byte(auth.GenerateSecureKey(auth.APIKeyLength))
+	// Setup CSRF protection using the standard library's cross-origin
+	// protection, which relies on Sec-Fetch-Site/Origin checks rather than
+	// synchronizer tokens. Same-origin requests from the admin UI and
+	// non-browser API clients (which send neither header) are allowed.
+	csrfProtection := http.NewCrossOriginProtection()
+	for _, origin := range as.config.TrustedOrigins {
+		if err := csrfProtection.AddTrustedOrigin(origin); err != nil {
+			log.Errorf("ignoring invalid trusted origin %q: %v", origin, err)
+		}
 	}
-	csrfHandler := csrf.Protect(csrfKey,
-		csrf.FieldName("csrf_token"),
-		csrf.Secure(as.config.UseTLS),
-		csrf.TrustedOrigins(as.config.TrustedOrigins))
-	adminHandler := csrfHandler(router)
-	// gorilla/csrf v1.7+ assumes requests are served over HTTPS and enforces
-	// strict Referer origin checks unless a request is explicitly marked as
-	// plaintext. When we're not serving over TLS, flag requests accordingly so
-	// cleartext HTTP admin access keeps working (Origin-based checks still apply).
-	if !as.config.UseTLS {
-		protectedHandler := adminHandler
-		adminHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			protectedHandler.ServeHTTP(w, csrf.PlaintextHTTPRequest(r))
-		})
+	// API routes authenticate with a bearer API key rather than the session
+	// cookie, so they are not susceptible to CSRF; keep them exempt as before.
+	for _, prefix := range mid.CSRFExemptPrefixes {
+		csrfProtection.AddInsecureBypassPattern(prefix + "/")
 	}
-	adminHandler = mid.Use(adminHandler.ServeHTTP, mid.CSRFExceptions, mid.GetContext, mid.ApplySecurityHeaders)
+	adminHandler := csrfProtection.Handler(router)
+	adminHandler = mid.Use(adminHandler.ServeHTTP, mid.GetContext, mid.ApplySecurityHeaders)
 
 	// Setup GZIP compression
 	gzipWrapper, _ := gziphandler.NewGzipLevelHandler(gzip.BestCompression)
@@ -186,7 +181,6 @@ type templateParams struct {
 	Title        string
 	Flashes      []interface{}
 	User         models.User
-	Token        string
 	Version      string
 	ModifySystem bool
 }
@@ -198,7 +192,6 @@ func newTemplateParams(r *http.Request) templateParams {
 	session := ctx.Get(r, "session").(*sessions.Session)
 	modifySystem, _ := user.HasPermission(models.PermissionModifySystem)
 	return templateParams{
-		Token:        csrf.Token(r),
 		User:         user,
 		ModifySystem: modifySystem,
 		Version:      config.Version,
@@ -323,8 +316,7 @@ func (as *AdminServer) handleInvalidLogin(w http.ResponseWriter, r *http.Request
 		User    models.User
 		Title   string
 		Flashes []interface{}
-		Token   string
-	}{Title: "Login", Token: csrf.Token(r)}
+	}{Title: "Login"}
 	params.Flashes = session.Flashes()
 	session.Save(r, w)
 	templates := template.New("template")
@@ -369,8 +361,7 @@ func (as *AdminServer) Login(w http.ResponseWriter, r *http.Request) {
 		User    models.User
 		Title   string
 		Flashes []interface{}
-		Token   string
-	}{Title: "Login", Token: csrf.Token(r)}
+	}{Title: "Login"}
 	session := ctx.Get(r, "session").(*sessions.Session)
 	switch {
 	case r.Method == "GET":

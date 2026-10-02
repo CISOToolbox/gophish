@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-
-	"github.com/PuerkitoBio/goquery"
 )
 
 func attemptLogin(t *testing.T, ctx *testContext, client *http.Client, username, password, optionalPath string) *http.Response {
@@ -21,23 +19,13 @@ func attemptLogin(t *testing.T, ctx *testContext, client *http.Client, username,
 		t.Fatalf("invalid status code received. expected %d got %d", expected, got)
 	}
 
-	doc, err := goquery.NewDocumentFromResponse(resp)
-	if err != nil {
-		t.Fatalf("error parsing /login response body")
-	}
-	elem := doc.Find("input[name='csrf_token']").First()
-	token, ok := elem.Attr("value")
-	if !ok {
-		t.Fatal("unable to find csrf_token value in login response")
-	}
 	if client == nil {
 		client = &http.Client{}
 	}
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login%s", ctx.adminServer.URL, optionalPath), strings.NewReader(url.Values{
-		"username":   {username},
-		"password":   {password},
-		"csrf_token": {token},
+		"username": {username},
+		"password": {password},
 	}.Encode()))
 	if err != nil {
 		t.Fatalf("error creating new /login request: %v", err)
@@ -56,12 +44,21 @@ func attemptLogin(t *testing.T, ctx *testContext, client *http.Client, username,
 func TestLoginCSRF(t *testing.T) {
 	ctx := setupTest(t)
 	defer tearDown(t, ctx)
-	resp, err := http.PostForm(fmt.Sprintf("%s/login", ctx.adminServer.URL),
-		url.Values{
+
+	// A cross-site unsafe request (as flagged by the browser via the
+	// Sec-Fetch-Site header) must be rejected by the cross-origin protection.
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login", ctx.adminServer.URL),
+		strings.NewReader(url.Values{
 			"username": {"admin"},
 			"password": {"gophish"},
-		})
+		}.Encode()))
+	if err != nil {
+		t.Fatalf("error creating the /login request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
 
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("error requesting the /login endpoint: %v", err)
 	}

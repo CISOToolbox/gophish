@@ -157,6 +157,16 @@ func (as *AdminServer) registerRoutes() {
 		csrf.Secure(as.config.UseTLS),
 		csrf.TrustedOrigins(as.config.TrustedOrigins))
 	adminHandler := csrfHandler(router)
+	// gorilla/csrf v1.7+ assumes requests are served over HTTPS and enforces
+	// strict Referer origin checks unless a request is explicitly marked as
+	// plaintext. When we're not serving over TLS, flag requests accordingly so
+	// cleartext HTTP admin access keeps working (Origin-based checks still apply).
+	if !as.config.UseTLS {
+		protectedHandler := adminHandler
+		adminHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			protectedHandler.ServeHTTP(w, csrf.PlaintextHTTPRequest(r))
+		})
+	}
 	adminHandler = mid.Use(adminHandler.ServeHTTP, mid.CSRFExceptions, mid.GetContext, mid.ApplySecurityHeaders)
 
 	// Setup GZIP compression

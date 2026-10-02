@@ -203,8 +203,13 @@ func (m *MailLog) Generate(msg *gomail.Message) error {
 		msg.SetHeader("X-Gophish-Contact", conf.ContactAddress)
 	}
 
-	// Add Message-Id header as described in RFC 2822.
-	messageID, err := m.generateMessageID()
+	// Add Message-Id header as described in RFC 2822, using the sender's domain
+	// so it aligns with the From header (not the container hostname).
+	senderDomain := ""
+	if at := strings.LastIndex(f.Address, "@"); at >= 0 {
+		senderDomain = f.Address[at+1:]
+	}
+	messageID, err := m.generateMessageID(senderDomain)
 	if err != nil {
 		return err
 	}
@@ -318,19 +323,25 @@ var maxBigInt = big.NewInt(math.MaxInt64)
 // - The calling PID
 // - A cryptographically random int64
 // - The sending hostname
-func (m *MailLog) generateMessageID() (string, error) {
+func (m *MailLog) generateMessageID(domain string) (string, error) {
 	t := time.Now().UnixNano()
 	pid := os.Getpid()
 	rint, err := rand.Int(rand.Reader, maxBigInt)
 	if err != nil {
 		return "", err
 	}
-	h, err := os.Hostname()
-	// If we can't get the hostname, we'll use localhost
-	if err != nil {
-		h = "localhost.localdomain"
+	// Prefer the sender's domain so the Message-Id is a valid FQDN aligned
+	// with the From header. The hostname fallback (e.g. a container ID) yields
+	// a non-FQDN that trips spam filters.
+	if domain == "" {
+		h, err := os.Hostname()
+		// If we can't get the hostname, we'll use localhost
+		if err != nil {
+			h = "localhost.localdomain"
+		}
+		domain = h
 	}
-	msgid := fmt.Sprintf("<%d.%d.%d@%s>", t, pid, rint, h)
+	msgid := fmt.Sprintf("<%d.%d.%d@%s>", t, pid, rint, domain)
 	return msgid, nil
 }
 

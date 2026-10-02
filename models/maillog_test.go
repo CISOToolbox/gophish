@@ -467,3 +467,14 @@ func BenchmarkMailLogGenerate10000(b *testing.B) {
 	}
 	tearDownBenchmark(b)
 }
+
+func (s *ModelsSuite) TestGenerateMessageID(ch *check.C) {
+	m := &MailLog{}
+	id, err := m.generateMessageID("proot.cloud")
+	ch.Assert(err, check.Equals, nil)
+	ch.Assert(id, check.Matches, `<.*@proot\.cloud>`)
+	// Empty domain falls back to the hostname (still a valid-looking id).
+	id2, err := m.generateMessageID("")
+	ch.Assert(err, check.Equals, nil)
+	ch.Assert(id2, check.Matches, `<.*@.+>`)
+}

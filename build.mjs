@@ -84,7 +84,7 @@ async function concatMinifyJs(files, dir, outFile) {
   )
   const { code } = await esbuild.transform(sources.join('\n;\n'), {
     minify: true,
-    legalComments: 'none',
+    legalComments: 'inline',
   })
   await writeFile(outFile, code)
 }
@@ -96,7 +96,7 @@ async function concatMinifyCss(files, dir, outFile) {
   const { code } = await esbuild.transform(sources.join('\n'), {
     loader: 'css',
     minify: true,
-    legalComments: 'none',
+    legalComments: 'inline',
   })
   await writeFile(outFile, code)
 }
@@ -107,7 +107,7 @@ async function minifyPlainScripts(names, dir, outDir) {
       const src = await readFile(path.join(dir, `${name}.js`), 'utf8')
       const { code } = await esbuild.transform(src, {
         minify: true,
-        legalComments: 'none',
+        legalComments: 'inline',
       })
       await writeFile(path.join(outDir, `${name}.min.js`), code)
     }),
@@ -125,7 +125,7 @@ async function bundleEntries(names, dir, outDir) {
     minify: true,
     format: 'iife',
     target: 'es2015',
-    legalComments: 'none',
+    legalComments: 'inline',
     logLevel: 'info',
   })
 }

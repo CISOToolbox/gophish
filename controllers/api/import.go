@@ -161,10 +161,20 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 	if cr.IncludeResources {
 		inlineStylesheets(d, baseURL, client)
 	}
-	// Insert a base href so the remaining relative resources (images, etc.)
-	// still resolve against the original URL.
-	if d.Find("head base").Length() == 0 {
+	// Make sure a base href points at the original site so the remaining
+	// relative resources (images, scripts, etc.) resolve against it rather
+	// than the host serving the landing page. If the page already ships a base
+	// (often root-relative, e.g. <base href="/"> on SPAs), rewrite it to an
+	// absolute origin URL instead of leaving it to resolve against our host.
+	baseSel := d.Find("head base").First()
+	if baseSel.Length() == 0 {
 		d.Find("head").PrependHtml(fmt.Sprintf("<base href=\"%s\">", cr.URL))
+	} else if href, ok := baseSel.Attr("href"); ok {
+		if ref, perr := url.Parse(strings.TrimSpace(href)); perr == nil {
+			if abs := baseURL.ResolveReference(ref); abs.Scheme == "http" || abs.Scheme == "https" {
+				baseSel.SetAttr("href", abs.String())
+			}
+		}
 	}
 	forms := d.Find("form")
 	forms.Each(func(i int, f *goquery.Selection) {

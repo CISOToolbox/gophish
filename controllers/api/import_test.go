@@ -146,3 +146,24 @@ func TestImportSiteWithoutResourcesKeepsLink(t *testing.T) {
 		t.Fatalf("without include_resources the <link> should be kept: %s", got.HTML)
 	}
 }
+
+func TestImportSiteRewritesExistingBase(t *testing.T) {
+	ctx := setupTest(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<html><head><base href="/"><title>x</title></head><body><img src="/a.png"></body></html>`)
+	}))
+	defer ts.Close()
+
+	response := makeImportRequestResources(ctx, []string{}, ts.URL, false)
+	if response.Code != http.StatusOK {
+		t.Fatalf("incorrect status code: expected 200 got %d", response.Code)
+	}
+	got := &cloneResponse{}
+	if err := json.NewDecoder(response.Body).Decode(got); err != nil {
+		t.Fatalf("error decoding body: %v", err)
+	}
+	wantBase := fmt.Sprintf(`href="%s/"`, ts.URL)
+	if !strings.Contains(got.HTML, wantBase) {
+		t.Fatalf("existing base not rewritten to absolute origin (want %q): %s", wantBase, got.HTML)
+	}
+}

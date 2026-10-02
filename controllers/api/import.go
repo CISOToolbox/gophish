@@ -3,12 +3,15 @@ package api
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 
@@ -22,6 +25,13 @@ import (
 
 // maxStylesheetSize caps how much we download for a single inlined stylesheet.
 const maxStylesheetSize = 5 << 20 // 5 MiB
+
+// maxEmbedSize caps a single resource embedded as a data: URI, and embedBudget
+// caps the total embedded across a single import so the page stays reasonable.
+const (
+	maxEmbedSize = 2 << 20  // 2 MiB per resource
+	embedBudget  = 12 << 20 // 12 MiB total
+)
 
 var (
 	cssURLRe    = regexp.MustCompile(`(?i)url\(\s*['"]?([^'")]+?)['"]?\s*\)`)
@@ -46,6 +56,10 @@ func cloneHTTPClient() *http.Client {
 type cloneRequest struct {
 	URL              string `json:"url"`
 	IncludeResources bool   `json:"include_resources"`
+	// EmbedImages additionally downloads images (and, when the CSS is inlined,
+	// the resources it references) and embeds them as data: URIs so the landing
+	// page is fully self-contained.
+	EmbedImages bool `json:"embed_images"`
 }
 
 func (cr *cloneRequest) validate() error {
@@ -156,10 +170,20 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 		JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 		return
 	}
+	// Optionally embed images (and CSS-referenced resources) as data: URIs so
+	// the landing page is fully self-contained. The embedder carries a shared
+	// size budget across stylesheets and images.
+	var embedder *resourceEmbedder
+	if cr.EmbedImages {
+		embedder = newResourceEmbedder(client)
+	}
 	// When requested, download each linked stylesheet and inline it so the
 	// landing page keeps its styling locally, without depending on the origin.
 	if cr.IncludeResources {
-		inlineStylesheets(d, baseURL, client)
+		inlineStylesheets(d, baseURL, client, embedder)
+	}
+	if cr.EmbedImages {
+		embedImages(d, baseURL, embedder)
 	}
 	// Make sure a base href points at the original site so the remaining
 	// relative resources (images, scripts, etc.) resolve against it rather
@@ -200,7 +224,7 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 // url()/@import references to absolute URLs so fonts and background images
 // still resolve. On a fetch error the <link> is kept but its href is made
 // absolute as a fallback.
-func inlineStylesheets(d *goquery.Document, base *url.URL, client *http.Client) {
+func inlineStylesheets(d *goquery.Document, base *url.URL, client *http.Client, embedder *resourceEmbedder) {
 	d.Find(`link[rel="stylesheet"]`).Each(func(i int, s *goquery.Selection) {
 		href, ok := s.Attr("href")
 		if !ok || strings.TrimSpace(href) == "" {
@@ -220,7 +244,7 @@ func inlineStylesheets(d *goquery.Document, base *url.URL, client *http.Client) 
 			s.SetAttr("href", abs.String())
 			return
 		}
-		css = rewriteCSSURLs(css, abs)
+		css = rewriteCSSURLs(css, abs, embedder)
 		// Prevent the stylesheet contents from closing the <style> element.
 		css = cssEndTagRe.ReplaceAllString(css, `<\/style`)
 		var b strings.Builder
@@ -255,13 +279,20 @@ func fetchResource(client *http.Client, u string) (string, error) {
 // rewriteCSSURLs resolves relative url(...) and @import "..." references in a
 // stylesheet against the stylesheet's own URL so they keep working once the
 // CSS has been moved (inlined) into the landing page.
-func rewriteCSSURLs(css string, base *url.URL) string {
+func rewriteCSSURLs(css string, base *url.URL, embedder *resourceEmbedder) string {
 	css = cssURLRe.ReplaceAllStringFunc(css, func(m string) string {
-		sub := cssURLRe.FindStringSubmatch(m)
-		if abs := absoluteResourceURL(sub[1], base); abs != "" {
-			return "url(" + abs + ")"
+		abs := absoluteResourceURL(cssURLRe.FindStringSubmatch(m)[1], base)
+		if abs == "" {
+			return m
 		}
-		return m
+		// Embed the referenced resource (font/background image) when asked and
+		// it isn't already a data: URI; otherwise keep the absolute URL.
+		if embedder != nil && !strings.HasPrefix(abs, "data:") {
+			if uri, ok := embedder.embed(abs); ok {
+				return "url(" + uri + ")"
+			}
+		}
+		return "url(" + abs + ")"
 	})
 	css = cssImportRe.ReplaceAllStringFunc(css, func(m string) string {
 		sub := cssImportRe.FindStringSubmatch(m)
@@ -289,4 +320,84 @@ func absoluteResourceURL(raw string, base *url.URL) string {
 		return ""
 	}
 	return base.ResolveReference(ref).String()
+}
+
+// resourceEmbedder downloads resources and returns them as data: URIs, bounded
+// by a per-resource size cap and a shared total budget so an import can't
+// produce an unbounded landing page.
+type resourceEmbedder struct {
+	client *http.Client
+	budget int
+}
+
+func newResourceEmbedder(client *http.Client) *resourceEmbedder {
+	return &resourceEmbedder{client: client, budget: embedBudget}
+}
+
+// embed fetches u and returns a data: URI for it. ok is false (and the caller
+// should keep the absolute URL) on any error, when the resource exceeds the
+// per-resource cap, or when the total budget is exhausted.
+func (e *resourceEmbedder) embed(u string) (string, bool) {
+	if e == nil || e.budget <= 0 {
+		return "", false
+	}
+	resp, err := e.client.Get(u)
+	if err != nil {
+		return "", false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", false
+	}
+	limit := maxEmbedSize
+	if e.budget < limit {
+		limit = e.budget
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, int64(limit)+1))
+	if err != nil || len(body) == 0 || len(body) > limit {
+		return "", false
+	}
+	e.budget -= len(body)
+	ct := resp.Header.Get("Content-Type")
+	if i := strings.IndexByte(ct, ';'); i >= 0 {
+		ct = ct[:i]
+	}
+	ct = strings.TrimSpace(ct)
+	if ct == "" {
+		ct = mime.TypeByExtension(path.Ext(u))
+	}
+	if ct == "" {
+		ct = "application/octet-stream"
+	}
+	return fmt.Sprintf("data:%s;base64,%s", ct, base64.StdEncoding.EncodeToString(body)), true
+}
+
+// embedImages downloads <img> sources and replaces them with data: URIs. On
+// failure it falls back to an absolute URL so the image still loads remotely.
+func embedImages(d *goquery.Document, base *url.URL, embedder *resourceEmbedder) {
+	d.Find("img").Each(func(i int, s *goquery.Selection) {
+		src, ok := s.Attr("src")
+		if !ok {
+			return
+		}
+		src = strings.TrimSpace(src)
+		if src == "" || strings.HasPrefix(src, "data:") {
+			return
+		}
+		ref, err := url.Parse(src)
+		if err != nil {
+			return
+		}
+		abs := base.ResolveReference(ref)
+		if abs.Scheme != "http" && abs.Scheme != "https" {
+			return
+		}
+		if uri, ok := embedder.embed(abs.String()); ok {
+			s.SetAttr("src", uri)
+			// A remote srcset would otherwise be preferred over the embedded src.
+			s.RemoveAttr("srcset")
+		} else {
+			s.SetAttr("src", abs.String())
+		}
+	})
 }

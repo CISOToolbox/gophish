@@ -167,3 +167,47 @@ func TestImportSiteRewritesExistingBase(t *testing.T) {
 		t.Fatalf("existing base not rewritten to absolute origin (want %q): %s", wantBase, got.HTML)
 	}
 }
+
+func makeImportRequestFull(ctx *testContext, allowedHosts []string, target string, includeResources, embedImages bool) *httptest.ResponseRecorder {
+	orig := dialer.DefaultDialer.AllowedHosts()
+	dialer.SetAllowedHosts(allowedHosts)
+	body := fmt.Sprintf(`{"url":"%s","include_resources":%t,"embed_images":%t}`, target, includeResources, embedImages)
+	req := httptest.NewRequest(http.MethodPost, "/api/import/site", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	ctx.apiServer.ImportSite(response, req)
+	dialer.SetAllowedHosts(orig)
+	return response
+}
+
+func TestImportSiteEmbedImages(t *testing.T) {
+	ctx := setupTest(t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/style.css":
+			w.Header().Set("Content-Type", "text/css")
+			fmt.Fprint(w, "body{background:url(bg.png)}")
+		case "/bg.png", "/logo.png":
+			w.Header().Set("Content-Type", "image/png")
+			w.Write([]byte("\x89PNG\r\n\x1a\nFAKEDATA"))
+		default:
+			fmt.Fprint(w, `<html><head><link rel="stylesheet" href="/style.css"></head><body><img src="/logo.png"></body></html>`)
+		}
+	}))
+	defer ts.Close()
+
+	response := makeImportRequestFull(ctx, []string{}, ts.URL, true, true)
+	if response.Code != http.StatusOK {
+		t.Fatalf("incorrect status code: expected 200 got %d", response.Code)
+	}
+	got := &cloneResponse{}
+	if err := json.NewDecoder(response.Body).Decode(got); err != nil {
+		t.Fatalf("error decoding body: %v", err)
+	}
+	if !strings.Contains(got.HTML, `src="data:image/png;base64,`) {
+		t.Fatalf("image was not embedded as a data URI: %s", got.HTML)
+	}
+	if !strings.Contains(got.HTML, "url(data:image/png;base64,") {
+		t.Fatalf("CSS url() resource was not embedded: %s", got.HTML)
+	}
+}

@@ -106,10 +106,13 @@
                 <div class="form-group">
                     <input type="text" class="form-control" placeholder="http://google.com" id="url" autofocus />
                 </div>
-                <div class="checkbox">
-                    <label>
-                        <input type="checkbox" id="import_include_resources" /> Download &amp; inline CSS (keep styles local)
-                    </label>
+                <div class="checkbox checkbox-primary">
+                    <input id="import_include_resources" type="checkbox">
+                    <label for="import_include_resources">Download &amp; inline CSS <i class="fa fa-question-circle" data-toggle="tooltip" data-placement="right" title="Fetch each linked stylesheet and embed it in the page so the styling stays local, independent of the original site."></i></label>
+                </div>
+                <div class="checkbox checkbox-primary">
+                    <input id="import_embed_images" type="checkbox">
+                    <label for="import_embed_images">Embed images &amp; fonts <i class="fa fa-question-circle" data-toggle="tooltip" data-placement="right" title="Also download images (and CSS-referenced resources) and embed them as data URIs for a fully self-contained page. Produces a larger page."></i></label>
                 </div>
             </div>
             <div class="modal-footer">

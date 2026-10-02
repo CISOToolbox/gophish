@@ -92,7 +92,8 @@ function importSite() {
     } else {
         api.clone_site({
                 url: url,
-                include_resources: $("#import_include_resources").prop("checked")
+                include_resources: $("#import_include_resources").prop("checked"),
+                embed_images: $("#import_embed_images").prop("checked")
             })
             .success(function (data) {
                 $("#html_editor").val(data.html)

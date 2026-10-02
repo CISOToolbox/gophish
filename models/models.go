@@ -17,8 +17,11 @@ import (
 	"github.com/gophish/gophish/config"
 
 	log "github.com/gophish/gophish/logger"
-	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3" // Blank import needed to import sqlite3
+	gormmysql "gorm.io/driver/mysql"
+	gormsqlite "gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
@@ -115,7 +118,7 @@ func createTemporaryPassword(u *User) error {
 	// Anytime a temporary password is created, we will force the user
 	// to change their password
 	u.PasswordChangeRequired = true
-	err = db.Save(u).Error
+	err = db.Omit("Role").Save(u).Error
 	if err != nil {
 		return err
 	}
@@ -169,10 +172,21 @@ func Setup(c *config.Config) error {
 		}
 	}
 
+	// Select the GORM dialector for the configured database.
+	var dialector gorm.Dialector
+	switch conf.DBName {
+	case "mysql":
+		dialector = gormmysql.Open(conf.DBPath)
+	// Default database is sqlite3
+	default:
+		dialector = gormsqlite.Open(conf.DBPath)
+	}
+
 	// Open our database connection
+	gormConfig := &gorm.Config{Logger: gormlogger.Default.LogMode(gormlogger.Silent)}
 	i := 0
 	for {
-		db, err = gorm.Open(conf.DBName, conf.DBPath)
+		db, err = gorm.Open(dialector, gormConfig)
 		if err == nil {
 			break
 		}
@@ -184,15 +198,14 @@ func Setup(c *config.Config) error {
 		log.Warn("waiting for database to be up...")
 		time.Sleep(5 * time.Second)
 	}
-	db.LogMode(false)
-	db.SetLogger(log.Logger)
-	db.DB().SetMaxOpenConns(1)
+	sqlDB, err := db.DB()
 	if err != nil {
 		log.Error(err)
 		return err
 	}
+	sqlDB.SetMaxOpenConns(1)
 	// Migrate up to the latest version
-	err = goose.RunMigrationsOnDb(migrateConf, migrateConf.MigrationsDir, latest, db.DB())
+	err = goose.RunMigrationsOnDb(migrateConf, migrateConf.MigrationsDir, latest, sqlDB)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -220,7 +233,7 @@ func Setup(c *config.Config) error {
 			adminUser.ApiKey = auth.GenerateSecureKey(auth.APIKeyLength)
 		}
 
-		err = db.Save(&adminUser).Error
+		err = db.Omit("Role").Save(&adminUser).Error
 		if err != nil {
 			log.Error(err)
 			return err

@@ -18,7 +18,7 @@ type User struct {
 	Username               string    `json:"username" sql:"not null;unique"`
 	Hash                   string    `json:"-"`
 	ApiKey                 string    `json:"api_key" sql:"not null;unique"`
-	Role                   Role      `json:"role" gorm:"association_autoupdate:false;association_autocreate:false"`
+	Role                   Role      `json:"role"`
 	RoleID                 int64     `json:"-"`
 	PasswordChangeRequired bool      `json:"password_change_required"`
 	AccountLocked          bool      `json:"account_locked"`
@@ -58,7 +58,10 @@ func GetUserByUsername(username string) (User, error) {
 
 // PutUser updates the given user
 func PutUser(u *User) error {
-	err := db.Save(u).Error
+	// Omit the Role association so saving a user never creates or updates the
+	// referenced role (it is managed separately); the role link is kept via
+	// the RoleID column.
+	err := db.Omit("Role").Save(u).Error
 	return err
 }
 
@@ -70,7 +73,7 @@ func EnsureEnoughAdmins() error {
 	if err != nil {
 		return err
 	}
-	var adminCount int
+	var adminCount int64
 	err = db.Model(&User{}).Where("role_id=?", role.ID).Count(&adminCount).Error
 	if err != nil {
 		return err

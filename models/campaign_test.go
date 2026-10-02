@@ -357,3 +357,54 @@ func (s *ModelsSuite) TestGetCampaignStats(ch *check.C) {
 	ch.Assert(stats.Error, check.Equals, int64(0))
 	ch.Assert(stats.EmailReported, check.Equals, int64(0))
 }
+
+func (s *ModelsSuite) TestPostCampaignRichDeps(ch *check.C) {
+	group := Group{Name: "Rich Group", UserId: 1}
+	group.Targets = []Target{
+		{BaseRecipient: BaseRecipient{Email: "rich@example.com", FirstName: "R", LastName: "X"}},
+	}
+	ch.Assert(PostGroup(&group), check.Equals, nil)
+
+	tmpl := Template{
+		Name: "Rich Template", UserId: 1, Subject: "S",
+		Text: "{{.URL}}", HTML: "{{.URL}}",
+		Attachments: []Attachment{{Name: "a.txt", Type: "text/plain", Content: "aGVsbG8="}},
+	}
+	ch.Assert(PostTemplate(&tmpl), check.Equals, nil)
+
+	page := Page{Name: "Rich Page", UserId: 1, HTML: "test"}
+	ch.Assert(PostPage(&page), check.Equals, nil)
+
+	smtp := SMTP{
+		Name: "Rich SMTP", UserId: 1, Host: "example.com:25", FromAddress: "f@example.com",
+		Headers: []Header{{Key: "X-Test", Value: "1"}},
+	}
+	ch.Assert(PostSMTP(&smtp), check.Equals, nil)
+
+	c := Campaign{Name: "Rich Campaign", UserId: 1, URL: "http://localhost"}
+	c.Template = tmpl
+	c.Page = page
+	c.SMTP = smtp
+	c.Groups = []Group{group}
+	err := PostCampaign(&c, 1)
+	ch.Assert(err, check.Equals, nil)
+}
+
+func (s *ModelsSuite) TestGetCampaignSummaries(ch *check.C) {
+	c := s.createCampaign(ch)
+	summaries, err := GetCampaignSummaries(c.UserId)
+	ch.Assert(err, check.Equals, nil)
+	ch.Assert(summaries.Total, check.Equals, int64(1))
+	ch.Assert(len(summaries.Campaigns), check.Equals, 1)
+	ch.Assert(summaries.Campaigns[0].Id, check.Equals, c.Id)
+	ch.Assert(summaries.Campaigns[0].Stats.Total, check.Equals, int64(len(c.Results)))
+}
+
+func (s *ModelsSuite) TestGetCampaignResults(ch *check.C) {
+	c := s.createCampaign(ch)
+	cr, err := GetCampaignResults(c.Id, c.UserId)
+	ch.Assert(err, check.Equals, nil)
+	ch.Assert(cr.Id, check.Equals, c.Id)
+	ch.Assert(cr.Name, check.Equals, c.Name)
+	ch.Assert(len(cr.Results), check.Equals, len(c.Results))
+}

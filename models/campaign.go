@@ -35,11 +35,14 @@ type Campaign struct {
 
 // CampaignResults is a struct representing the results from a campaign
 type CampaignResults struct {
-	Id      int64    `json:"id"`
-	Name    string   `json:"name"`
-	Status  string   `json:"status"`
-	Results []Result `json:"results,omitempty"`
-	Events  []Event  `json:"timeline,omitempty"`
+	Id     int64  `json:"id"`
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	// Results/Events are loaded with explicit queries below, not as GORM
+	// relations: this struct is scanned from the campaigns table via Table(),
+	// where GORM v2 cannot resolve them and would error. Ignore them here.
+	Results []Result `json:"results,omitempty" gorm:"-"`
+	Events  []Event  `json:"timeline,omitempty" gorm:"-"`
 }
 
 // CampaignSummaries is a struct representing the overview of campaigns
@@ -50,14 +53,17 @@ type CampaignSummaries struct {
 
 // CampaignSummary is a struct representing the overview of a single camaign
 type CampaignSummary struct {
-	Id            int64         `json:"id"`
-	CreatedDate   time.Time     `json:"created_date"`
-	LaunchDate    time.Time     `json:"launch_date"`
-	SendByDate    time.Time     `json:"send_by_date"`
-	CompletedDate time.Time     `json:"completed_date"`
-	Status        string        `json:"status"`
-	Name          string        `json:"name"`
-	Stats         CampaignStats `json:"stats"`
+	Id            int64     `json:"id"`
+	CreatedDate   time.Time `json:"created_date"`
+	LaunchDate    time.Time `json:"launch_date"`
+	SendByDate    time.Time `json:"send_by_date"`
+	CompletedDate time.Time `json:"completed_date"`
+	Status        string    `json:"status"`
+	Name          string    `json:"name"`
+	// Stats is computed by getCampaignStats, not a column/association: tell
+	// GORM to ignore it so scanning CampaignSummary via Table() doesn't try to
+	// resolve it as a relation (GORM v2 errors otherwise).
+	Stats CampaignStats `json:"stats" gorm:"-"`
 }
 
 // CampaignStats is a struct representing the statistics for a single campaign

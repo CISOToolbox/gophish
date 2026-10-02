@@ -17,7 +17,9 @@ RUN go build -v
 
 
 # Runtime container
-FROM debian:stable-slim
+# Pinned to the Debian codename so the base does not float across Debian
+# releases on rebuild (unlike the moving "stable" tag).
+FROM debian:bookworm-slim
 
 RUN useradd -m -d /opt/gophish -s /bin/bash app
 

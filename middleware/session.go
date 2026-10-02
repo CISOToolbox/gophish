@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/gob"
+	"net/http"
 
 	"github.com/gophish/gophish/models"
 	"github.com/gorilla/securecookie"
@@ -13,6 +14,10 @@ func init() {
 	gob.Register(&models.User{})
 	gob.Register(&models.Flash{})
 	Store.Options.HttpOnly = true
+	// SameSite=Lax keeps the session cookie from being sent on cross-site
+	// sub-requests, adding defense-in-depth on top of the cross-origin (CSRF)
+	// protection while still allowing normal same-site admin navigation.
+	Store.Options.SameSite = http.SameSiteLaxMode
 	// This sets the maxAge to 5 days for all cookies
 	Store.MaxAge(86400 * 5)
 }

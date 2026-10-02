@@ -89,6 +89,12 @@ func RequireAPIKey(handler http.Handler) http.Handler {
 			JSONError(w, http.StatusUnauthorized, "Invalid API Key")
 			return
 		}
+		// Enforce account locks on the API path too (web login already does),
+		// otherwise a locked user keeps full API access via their key.
+		if u.AccountLocked {
+			JSONError(w, http.StatusUnauthorized, "Account locked")
+			return
+		}
 		r = ctx.Set(r, "user", u)
 		r = ctx.Set(r, "user_id", u.Id)
 		r = ctx.Set(r, "api_key", ak)

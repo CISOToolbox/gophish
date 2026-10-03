@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/gophish/gophish/audit"
 	"github.com/gophish/gophish/auth"
 	ctx "github.com/gophish/gophish/context"
 	"github.com/gophish/gophish/models"
@@ -18,6 +19,7 @@ func (as *Server) Reset(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, "Error setting API Key", http.StatusInternalServerError)
 		} else {
+			audit.LogEvent(r, u.Username, audit.EventAPIKeyReset, "SUCCESS")
 			JSONResponse(w, models.Response{Success: true, Message: "API Key successfully reset!", Data: u.ApiKey}, http.StatusOK)
 		}
 	}

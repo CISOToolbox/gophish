@@ -66,6 +66,7 @@ func TestLoadConfig(t *testing.T) {
 	expectedConfig.TestFlag = false
 	expectedConfig.AdminConf.CSRFKey = ""
 	expectedConfig.Logging = &log.Config{}
+	expectedConfig.AuditLogPath = "gophish_audit.log"
 	if !reflect.DeepEqual(expectedConfig, conf) {
 		t.Fatalf("invalid config received. expected %#v got %#v", expectedConfig, conf)
 	}

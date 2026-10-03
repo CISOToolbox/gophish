@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/gophish/gophish/audit"
 	"github.com/gophish/gophish/auth"
 	ctx "github.com/gophish/gophish/context"
 	log "github.com/gophish/gophish/logger"
@@ -116,6 +118,7 @@ func (as *Server) Users(w http.ResponseWriter, r *http.Request) {
 			JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
 			return
 		}
+		audit.LogEvent(r, auditActor(r), audit.EventUserCreate, fmt.Sprintf("user '%s' (role %s)", user.Username, ur.Role))
 		JSONResponse(w, user, http.StatusOK)
 		return
 	}
@@ -154,6 +157,7 @@ func (as *Server) User(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Infof("Deleted user account for %s", existingUser.Username)
+		audit.LogEvent(r, auditActor(r), audit.EventUserDelete, fmt.Sprintf("user '%s' (id %d)", existingUser.Username, id))
 		JSONResponse(w, models.Response{Success: true, Message: "User deleted Successfully!"}, http.StatusOK)
 	case r.Method == "PUT":
 		ur := &userRequest{}
@@ -230,6 +234,7 @@ func (as *Server) User(w http.ResponseWriter, r *http.Request) {
 			JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
 			return
 		}
+		audit.LogEvent(r, auditActor(r), audit.EventUserModify, fmt.Sprintf("user '%s' (id %d, role %s)", existingUser.Username, id, existingUser.Role.Slug))
 		JSONResponse(w, existingUser, http.StatusOK)
 	}
 }

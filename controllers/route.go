@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/NYTimes/gziphandler"
+	"github.com/gophish/gophish/audit"
 	"github.com/gophish/gophish/auth"
 	"github.com/gophish/gophish/config"
 	ctx "github.com/gophish/gophish/context"
@@ -387,6 +388,7 @@ func (as *AdminServer) Login(w http.ResponseWriter, r *http.Request) {
 		u, err := models.GetUserByUsername(username)
 		if err != nil {
 			log.Error(err)
+			audit.LogEvent(r, username, audit.EventLogin, "FAILED - Invalid Username/Password")
 			as.handleInvalidLogin(w, r, "Invalid Username/Password")
 			return
 		}
@@ -394,10 +396,12 @@ func (as *AdminServer) Login(w http.ResponseWriter, r *http.Request) {
 		err = auth.ValidatePassword(password, u.Hash)
 		if err != nil {
 			log.Error(err)
+			audit.LogEvent(r, username, audit.EventLogin, "FAILED - Invalid Username/Password")
 			as.handleInvalidLogin(w, r, "Invalid Username/Password")
 			return
 		}
 		if u.AccountLocked {
+			audit.LogEvent(r, username, audit.EventLogin, "FAILED - Account Locked")
 			as.handleInvalidLogin(w, r, "Account Locked")
 			return
 		}
@@ -407,6 +411,7 @@ func (as *AdminServer) Login(w http.ResponseWriter, r *http.Request) {
 			log.Error(err)
 		}
 		// If we've logged in, save the session and redirect to the dashboard
+		audit.LogEvent(r, u.Username, audit.EventLogin, "SUCCESS")
 		session.Values["id"] = u.Id
 		session.Save(r, w)
 		as.nextOrIndex(w, r)
@@ -416,6 +421,11 @@ func (as *AdminServer) Login(w http.ResponseWriter, r *http.Request) {
 // Logout destroys the current user session
 func (as *AdminServer) Logout(w http.ResponseWriter, r *http.Request) {
 	session := ctx.Get(r, "session").(*sessions.Session)
+	// Resolve the current user for the audit entry, guarding the type
+	// assertion so a missing context value can never panic the handler.
+	if u, ok := ctx.Get(r, "user").(models.User); ok {
+		audit.LogEvent(r, u.Username, audit.EventLogout, "SUCCESS")
+	}
 	delete(session.Values, "id")
 	Flash(w, r, "success", "You have successfully logged out")
 	session.Save(r, w)

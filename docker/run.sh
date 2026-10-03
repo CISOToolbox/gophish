@@ -66,6 +66,14 @@ if [ -n "${CONTACT_ADDRESS+set}" ] ; then
         cat config.json.tmp > config.json
 fi
 
+# set audit_log_path
+if [ -n "${AUDIT_LOG_PATH+set}" ] ; then
+    jq -r \
+        --arg AUDIT_LOG_PATH "${AUDIT_LOG_PATH}" \
+        '.audit_log_path = $AUDIT_LOG_PATH' config.json > config.json.tmp && \
+        cat config.json.tmp > config.json
+fi
+
 # db_name has to be changed to mysql for mysql connection to work
 if [ -n "${DB_NAME+set}" ] ; then
     jq -r \

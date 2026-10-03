@@ -47,6 +47,7 @@ ciso-gophish reads a JSON configuration file (`config.json` in the working direc
 | `contact_address` | Address shown to recipients who make a transparency request. |
 | `logging.filename` | Log file (empty = stdout). |
 | `logging.level` | Log level (empty = default). |
+| `audit_log_path` | Path of the security audit log (default `gophish_audit.log`). See [Audit log](#audit-log). |
 
 ## Environment variables (container)
 
@@ -64,6 +65,20 @@ ciso-gophish reads a JSON configuration file (`config.json` in the working direc
 | `CONTACT_ADDRESS` | `contact_address` |
 | `DB_NAME` | `db_name` (`sqlite3` or `mysql`) |
 | `DB_FILE_PATH` | `db_path` (SQLite path or MySQL DSN) |
+| `AUDIT_LOG_PATH` | `audit_log_path` |
+
+## Audit log
+
+ciso-gophish keeps a separate, append-only **security audit log** (default `gophish_audit.log`, path set by `audit_log_path` / `AUDIT_LOG_PATH`). It records authentication and sensitive admin actions, one line each:
+
+```
+2026-10-03 20:39:06 | LOGIN            | alice                    | IP: 203.0.113.7         | SUCCESS
+2026-10-03 20:41:12 | CAMPAIGN_LAUNCH  | alice                    | IP: 203.0.113.7         | campaign 'Q3 test' (id 12) launched immediately
+```
+
+Audited events: `LOGIN` (SUCCESS / FAILED / Account Locked), `LOGOUT`, `CAMPAIGN_CREATE`, `CAMPAIGN_LAUNCH`, `CAMPAIGN_DELETE`, `CAMPAIGN_COMPLETE`, `USER_CREATE`, `USER_MODIFY`, `USER_DELETE`, `APIKEY_RESET`.
+
+The client IP honors the left-most `X-Forwarded-For` entry when present (meaningful only behind a trusted reverse proxy that sets it), otherwise the direct remote address. The file is append-only with no built-in rotation — rotate it externally (e.g. `logrotate`) and ship it to your SIEM as needed.
 
 ## Database
 

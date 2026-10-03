@@ -2,15 +2,26 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/gophish/gophish/audit"
 	ctx "github.com/gophish/gophish/context"
 	log "github.com/gophish/gophish/logger"
 	"github.com/gophish/gophish/models"
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
+
+// auditActor returns the username of the authenticated caller for audit
+// entries, or "-" when it cannot be resolved.
+func auditActor(r *http.Request) string {
+	if u, ok := ctx.Get(r, "user").(models.User); ok {
+		return u.Username
+	}
+	return "-"
+}
 
 // canViewAllCampaigns reports whether the requesting user has been granted
 // PermissionViewAllCampaigns, i.e. read-only visibility over every user's
@@ -58,9 +69,11 @@ func (as *Server) Campaigns(w http.ResponseWriter, r *http.Request) {
 			JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 			return
 		}
+		audit.LogEvent(r, auditActor(r), audit.EventCampaignCreate, fmt.Sprintf("campaign '%s' (id %d)", c.Name, c.Id))
 		// If the campaign is scheduled to launch immediately, send it to the worker.
 		// Otherwise, the worker will pick it up at the scheduled time
 		if c.Status == models.CampaignInProgress {
+			audit.LogEvent(r, auditActor(r), audit.EventCampaignLaunch, fmt.Sprintf("campaign '%s' (id %d) launched immediately", c.Name, c.Id))
 			go as.worker.LaunchCampaign(c)
 		}
 		JSONResponse(w, c, http.StatusCreated)
@@ -120,6 +133,7 @@ func (as *Server) Campaign(w http.ResponseWriter, r *http.Request) {
 			JSONResponse(w, models.Response{Success: false, Message: "Error deleting campaign"}, http.StatusInternalServerError)
 			return
 		}
+		audit.LogEvent(r, auditActor(r), audit.EventCampaignDelete, fmt.Sprintf("campaign '%s' (id %d)", c.Name, id))
 		JSONResponse(w, models.Response{Success: true, Message: "Campaign deleted successfully!"}, http.StatusOK)
 	}
 }
@@ -185,6 +199,7 @@ func (as *Server) CampaignComplete(w http.ResponseWriter, r *http.Request) {
 			JSONResponse(w, models.Response{Success: false, Message: "Error completing campaign"}, http.StatusInternalServerError)
 			return
 		}
+		audit.LogEvent(r, auditActor(r), audit.EventCampaignComplete, fmt.Sprintf("campaign id %d", id))
 		JSONResponse(w, models.Response{Success: true, Message: "Campaign completed successfully!"}, http.StatusOK)
 	}
 }

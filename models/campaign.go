@@ -341,6 +341,36 @@ func GetCampaigns(uid int64) ([]Campaign, error) {
 	return cs, err
 }
 
+// GetCampaignsAll returns every campaign, regardless of owner. It is used for
+// users granted PermissionViewAllCampaigns (read-only cross-user visibility).
+func GetCampaignsAll() ([]Campaign, error) {
+	cs := []Campaign{}
+	err := db.Find(&cs).Error
+	if err != nil {
+		log.Error(err)
+	}
+	for i := range cs {
+		err = cs[i].getDetails()
+		if err != nil {
+			log.Error(err)
+		}
+	}
+	return cs, err
+}
+
+// GetCampaignByID returns the campaign specified by the given id, regardless of
+// owner. It is used for users granted PermissionViewAllCampaigns.
+func GetCampaignByID(id int64) (Campaign, error) {
+	c := Campaign{}
+	err := db.Where("id = ?", id).First(&c).Error
+	if err != nil {
+		log.Errorf("%s: campaign not found", err)
+		return c, err
+	}
+	err = c.getDetails()
+	return c, err
+}
+
 // GetCampaignSummaries gets the summary objects for all the campaigns
 // owned by the current user
 func GetCampaignSummaries(uid int64) (CampaignSummaries, error) {
@@ -365,6 +395,51 @@ func GetCampaignSummaries(uid int64) (CampaignSummaries, error) {
 	overview.Total = int64(len(cs))
 	overview.Campaigns = cs
 	return overview, nil
+}
+
+// GetCampaignSummariesAll gets the summary objects for every campaign,
+// regardless of owner (for PermissionViewAllCampaigns).
+func GetCampaignSummariesAll() (CampaignSummaries, error) {
+	overview := CampaignSummaries{}
+	cs := []CampaignSummary{}
+	query := db.Table("campaigns")
+	query = query.Select("id, name, created_date, launch_date, send_by_date, completed_date, status")
+	err := query.Scan(&cs).Error
+	if err != nil {
+		log.Error(err)
+		return overview, err
+	}
+	for i := range cs {
+		s, err := getCampaignStats(cs[i].Id)
+		if err != nil {
+			log.Error(err)
+			return overview, err
+		}
+		cs[i].Stats = s
+	}
+	overview.Total = int64(len(cs))
+	overview.Campaigns = cs
+	return overview, nil
+}
+
+// GetCampaignSummaryAll gets the summary object for a campaign specified by the
+// campaign ID, regardless of owner (for PermissionViewAllCampaigns).
+func GetCampaignSummaryAll(id int64) (CampaignSummary, error) {
+	cs := CampaignSummary{}
+	query := db.Table("campaigns").Where("id = ?", id)
+	query = query.Select("id, name, created_date, launch_date, send_by_date, completed_date, status")
+	err := query.Scan(&cs).Error
+	if err != nil {
+		log.Error(err)
+		return cs, err
+	}
+	s, err := getCampaignStats(cs.Id)
+	if err != nil {
+		log.Error(err)
+		return cs, err
+	}
+	cs.Stats = s
+	return cs, nil
 }
 
 // GetCampaignSummary gets the summary object for a campaign specified by the campaign ID
@@ -442,6 +517,32 @@ func GetCampaignResults(id int64, uid int64) (CampaignResults, error) {
 		return cr, err
 	}
 	err = db.Table("results").Where("campaign_id=? and user_id=?", cr.Id, uid).Find(&cr.Results).Error
+	if err != nil {
+		log.Errorf("%s: results not found for campaign", err)
+		return cr, err
+	}
+	err = db.Table("events").Where("campaign_id=?", cr.Id).Find(&cr.Events).Error
+	if err != nil {
+		log.Errorf("%s: events not found for campaign", err)
+		return cr, err
+	}
+	return cr, err
+}
+
+// GetCampaignResultsAll returns the results for the given campaign regardless
+// of owner (for PermissionViewAllCampaigns). Unlike GetCampaignResults it does
+// not scope the results to a single user.
+func GetCampaignResultsAll(id int64) (CampaignResults, error) {
+	cr := CampaignResults{}
+	err := db.Table("campaigns").Where("id=?", id).First(&cr).Error
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"campaign_id": id,
+			"error":       err,
+		}).Error(err)
+		return cr, err
+	}
+	err = db.Table("results").Where("campaign_id=?", cr.Id).Find(&cr.Results).Error
 	if err != nil {
 		log.Errorf("%s: results not found for campaign", err)
 		return cr, err

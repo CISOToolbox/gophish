@@ -12,12 +12,34 @@ import (
 	"gorm.io/gorm"
 )
 
+// canViewAllCampaigns reports whether the requesting user has been granted
+// PermissionViewAllCampaigns, i.e. read-only visibility over every user's
+// campaigns and results.
+func canViewAllCampaigns(r *http.Request) bool {
+	u, ok := ctx.Get(r, "user").(models.User)
+	if !ok {
+		return false
+	}
+	ok, err := u.HasPermission(models.PermissionViewAllCampaigns)
+	if err != nil {
+		log.Error(err)
+		return false
+	}
+	return ok
+}
+
 // Campaigns returns a list of campaigns if requested via GET.
 // If requested via POST, APICampaigns creates a new campaign and returns a reference to it.
 func (as *Server) Campaigns(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == "GET":
-		cs, err := models.GetCampaigns(ctx.Get(r, "user_id").(int64))
+		var cs []models.Campaign
+		var err error
+		if canViewAllCampaigns(r) {
+			cs, err = models.GetCampaignsAll()
+		} else {
+			cs, err = models.GetCampaigns(ctx.Get(r, "user_id").(int64))
+		}
 		if err != nil {
 			log.Error(err)
 		}
@@ -49,7 +71,13 @@ func (as *Server) Campaigns(w http.ResponseWriter, r *http.Request) {
 func (as *Server) CampaignsSummary(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.Method == "GET":
-		cs, err := models.GetCampaignSummaries(ctx.Get(r, "user_id").(int64))
+		var cs models.CampaignSummaries
+		var err error
+		if canViewAllCampaigns(r) {
+			cs, err = models.GetCampaignSummariesAll()
+		} else {
+			cs, err = models.GetCampaignSummaries(ctx.Get(r, "user_id").(int64))
+		}
 		if err != nil {
 			log.Error(err)
 			JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
@@ -64,7 +92,14 @@ func (as *Server) CampaignsSummary(w http.ResponseWriter, r *http.Request) {
 func (as *Server) Campaign(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.ParseInt(vars["id"], 0, 64)
-	c, err := models.GetCampaign(id, ctx.Get(r, "user_id").(int64))
+	uid := ctx.Get(r, "user_id").(int64)
+	var c models.Campaign
+	var err error
+	if canViewAllCampaigns(r) {
+		c, err = models.GetCampaignByID(id)
+	} else {
+		c, err = models.GetCampaign(id, uid)
+	}
 	if err != nil {
 		log.Error(err)
 		JSONResponse(w, models.Response{Success: false, Message: "Campaign not found"}, http.StatusNotFound)
@@ -74,6 +109,12 @@ func (as *Server) Campaign(w http.ResponseWriter, r *http.Request) {
 	case r.Method == "GET":
 		JSONResponse(w, c, http.StatusOK)
 	case r.Method == "DELETE":
+		// Deletion stays owner-scoped even for users who can view all
+		// campaigns: PermissionViewAllCampaigns is read-only.
+		if c.UserId != uid {
+			JSONResponse(w, models.Response{Success: false, Message: "Campaign not found"}, http.StatusNotFound)
+			return
+		}
 		err = models.DeleteCampaign(id)
 		if err != nil {
 			JSONResponse(w, models.Response{Success: false, Message: "Error deleting campaign"}, http.StatusInternalServerError)
@@ -88,7 +129,13 @@ func (as *Server) Campaign(w http.ResponseWriter, r *http.Request) {
 func (as *Server) CampaignResults(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.ParseInt(vars["id"], 0, 64)
-	cr, err := models.GetCampaignResults(id, ctx.Get(r, "user_id").(int64))
+	var cr models.CampaignResults
+	var err error
+	if canViewAllCampaigns(r) {
+		cr, err = models.GetCampaignResultsAll(id)
+	} else {
+		cr, err = models.GetCampaignResults(id, ctx.Get(r, "user_id").(int64))
+	}
 	if err != nil {
 		log.Error(err)
 		JSONResponse(w, models.Response{Success: false, Message: "Campaign not found"}, http.StatusNotFound)
@@ -106,7 +153,13 @@ func (as *Server) CampaignSummary(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(vars["id"], 0, 64)
 	switch {
 	case r.Method == "GET":
-		cs, err := models.GetCampaignSummary(id, ctx.Get(r, "user_id").(int64))
+		var cs models.CampaignSummary
+		var err error
+		if canViewAllCampaigns(r) {
+			cs, err = models.GetCampaignSummaryAll(id)
+		} else {
+			cs, err = models.GetCampaignSummary(id, ctx.Get(r, "user_id").(int64))
+		}
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				JSONResponse(w, models.Response{Success: false, Message: "Campaign not found"}, http.StatusNotFound)

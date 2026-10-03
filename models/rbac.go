@@ -43,7 +43,16 @@ const (
 	// PermissionModifySystem determines if a role can manage system-level
 	// configuration.
 	PermissionModifySystem = "modify_system"
+	// PermissionViewAllCampaigns determines if a role can view campaigns (and
+	// their results) owned by any user, not just its own. It grants read-only
+	// visibility: it never allows modifying another user's campaigns.
+	PermissionViewAllCampaigns = "view_all_campaigns"
 )
+
+// RoleAuditor is a read-only role that can view every user's campaigns and
+// results (via PermissionViewAllCampaigns) without being able to modify any
+// object or system configuration.
+const RoleAuditor = "auditor"
 
 // Role represents a user role within Gophish. Each user has a single role
 // which maps to a set of permissions.

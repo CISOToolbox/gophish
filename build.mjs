@@ -70,6 +70,7 @@ const plainScripts = [
   'campaign_results',
   'campaigns',
   'dashboard',
+  'educational_pages',
   'groups',
   'landing_pages',
   'sending_profiles',

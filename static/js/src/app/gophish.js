@@ -191,6 +191,32 @@ var api = {
             return query("/pages/" + id, "DELETE", {}, false)
         }
     },
+    // educational_pages contains the endpoints for /educational_pages
+    educational_pages: {
+        // get() - Queries the API for GET /educational_pages
+        get: function () {
+            return query("/educational_pages/", "GET", {}, false)
+        },
+        // post() - Posts an educational page to POST /educational_pages
+        post: function (page) {
+            return query("/educational_pages/", "POST", page, false)
+        }
+    },
+    // educational_pageId contains the endpoints for /educational_pages/:id
+    educational_pageId: {
+        // get() - Queries the API for GET /educational_pages/:id
+        get: function (id) {
+            return query("/educational_pages/" + id, "GET", {}, false)
+        },
+        // put() - Puts an educational page to PUT /educational_pages/:id
+        put: function (page) {
+            return query("/educational_pages/" + page.id, "PUT", page, false)
+        },
+        // delete() - Deletes an educational page at DELETE /educational_pages/:id
+        delete: function (id) {
+            return query("/educational_pages/" + id, "DELETE", {}, false)
+        }
+    },
     // SMTP contains the endpoints for /smtp
     SMTP: {
         // get() - Queries the API for GET /smtp

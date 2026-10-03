@@ -225,7 +225,7 @@ func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-		renderPhishResponse(w, r, ptx, p)
+		renderPhishResponse(w, r, ptx, p, nil)
 		return
 	}
 	rs := ctx.Get(r, "result").(models.Result)
@@ -262,13 +262,27 @@ func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error(err)
 		http.NotFound(w, r)
 	}
-	renderPhishResponse(w, r, ptx, p)
+	renderPhishResponse(w, r, ptx, p, &c.EducationalPage)
 }
 
 // renderPhishResponse handles rendering the correct response to the phishing
 // connection. This usually involves writing out the page HTML or redirecting
 // the user to the correct URL.
-func renderPhishResponse(w http.ResponseWriter, r *http.Request, ptx models.PhishingTemplateContext, p models.Page) {
+func renderPhishResponse(w http.ResponseWriter, r *http.Request, ptx models.PhishingTemplateContext, p models.Page, edu *models.EducationalPage) {
+	// If the request was a form submit and the campaign defines an educational
+	// page, serve that awareness content. This takes precedence over the
+	// landing page's redirect URL so a campaign can always steer users to a
+	// chosen teaching moment after they submit.
+	if r.Method == "POST" && edu != nil && edu.Id != 0 {
+		html, err := models.ExecuteTemplate(edu.HTML, ptx)
+		if err != nil {
+			log.Error(err)
+			http.NotFound(w, r)
+			return
+		}
+		w.Write([]byte(html))
+		return
+	}
 	// If the request was a form submit and a redirect URL was specified, we
 	// should send the user to that URL
 	if r.Method == "POST" {

@@ -46,6 +46,9 @@ function launch() {
                     page: {
                         name: $("#page").select2("data")[0].text
                     },
+                    educational_page: {
+                        name: ($("#educational_page").select2("data")[0] || {}).text || ""
+                    },
                     smtp: {
                         name: $("#profile").select2("data")[0].text
                     },
@@ -119,6 +122,7 @@ function dismiss() {
     $("#name").val("");
     $("#template").val("").change();
     $("#page").val("").change();
+    $("#educational_page").val("").change();
     $("#url").val("");
     $("#profile").val("").change();
     $("#users").val("").change();
@@ -223,6 +227,21 @@ function setupOptions() {
                 }
             }
         });
+    api.educational_pages.get()
+        .success(function (pages) {
+            // Educational pages are optional, so an empty list is fine. We
+            // always include an empty option so a campaign can opt out.
+            var edu_s2 = $.map(pages, function (obj) {
+                obj.text = obj.name
+                return obj
+            });
+            edu_s2.unshift({ id: "", text: "" })
+            $("#educational_page.form-control").select2({
+                placeholder: "Select an Educational Page (optional)",
+                allowClear: true,
+                data: edu_s2,
+            });
+        });
     api.SMTP.get()
         .success(function (profiles) {
             if (profiles.length == 0) {
@@ -273,6 +292,12 @@ function copy(idx) {
             } else {
                 $("#page").val(campaign.page.id.toString());
                 $("#page").trigger("change.select2")
+            }
+            if (campaign.educational_page && campaign.educational_page.id) {
+                $("#educational_page").val(campaign.educational_page.id.toString());
+                $("#educational_page").trigger("change.select2")
+            } else {
+                $("#educational_page").val("").change();
             }
             if (!campaign.smtp.id) {
                 $("#profile").val("").change();

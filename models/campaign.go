@@ -24,13 +24,19 @@ type Campaign struct {
 	Template      Template  `json:"template"`
 	PageId        int64     `json:"-"`
 	Page          Page      `json:"page"`
-	Status        string    `json:"status"`
-	Results       []Result  `json:"results,omitempty"`
-	Groups        []Group   `json:"groups,omitempty" gorm:"-"`
-	Events        []Event   `json:"timeline,omitempty"`
-	SMTPId        int64     `json:"-"`
-	SMTP          SMTP      `json:"smtp"`
-	URL           string    `json:"url"`
+	// EducationalPage is optional: when set, recipients are shown this
+	// awareness page after submitting the landing page form. It is loaded and
+	// persisted via EducationalPageId, not as a GORM association (gorm:"-"),
+	// to avoid association upserts on Save.
+	EducationalPageId int64           `json:"-"`
+	EducationalPage   EducationalPage `json:"educational_page,omitempty" gorm:"-"`
+	Status            string          `json:"status"`
+	Results           []Result        `json:"results,omitempty"`
+	Groups            []Group         `json:"groups,omitempty" gorm:"-"`
+	Events            []Event         `json:"timeline,omitempty"`
+	SMTPId            int64           `json:"-"`
+	SMTP              SMTP            `json:"smtp"`
+	URL               string          `json:"url"`
 }
 
 // CampaignResults is a struct representing the results from a campaign
@@ -128,6 +134,9 @@ var ErrPageNotFound = errors.New("Page not found")
 // ErrSMTPNotFound indicates a sending profile specified by the user does not exist in the database
 var ErrSMTPNotFound = errors.New("Sending profile not found")
 
+// ErrEducationalPageNotFound indicates an educational page specified by the user does not exist in the database
+var ErrEducationalPageNotFound = errors.New("Educational page not found")
+
 // ErrInvalidSendByDate indicates that the user specified a send by date that occurs before the
 // launch date
 var ErrInvalidSendByDate = errors.New("The launch date must be before the \"send emails by\" date")
@@ -217,6 +226,17 @@ func (c *Campaign) getDetails() error {
 		}
 		c.Page = Page{Name: "[Deleted]"}
 		log.Warnf("%s: page not found for campaign", err)
+	}
+	// The educational page is optional, so only resolve it when one was set.
+	if c.EducationalPageId != 0 {
+		err = db.Table("educational_pages").Where("id=?", c.EducationalPageId).First(&c.EducationalPage).Error
+		if err != nil {
+			if err != gorm.ErrRecordNotFound {
+				return err
+			}
+			c.EducationalPage = EducationalPage{Name: "[Deleted]"}
+			log.Warnf("%s: educational page not found for campaign", err)
+		}
 	}
 	err = db.Table("smtp").Where("id=?", c.SMTPId).First(&c.SMTP).Error
 	if err != nil {
@@ -517,6 +537,22 @@ func PostCampaign(c *Campaign, uid int64) error {
 	}
 	c.Page = p
 	c.PageId = p.Id
+	// The educational page is optional. When specified by name, resolve it so
+	// recipients can be redirected to it after submitting the landing page.
+	if c.EducationalPage.Name != "" {
+		ep, err := GetEducationalPageByName(c.EducationalPage.Name, uid)
+		if err == gorm.ErrRecordNotFound {
+			log.WithFields(logrus.Fields{
+				"educational_page": c.EducationalPage.Name,
+			}).Error("Educational page does not exist")
+			return ErrEducationalPageNotFound
+		} else if err != nil {
+			log.Error(err)
+			return err
+		}
+		c.EducationalPage = ep
+		c.EducationalPageId = ep.Id
+	}
 	// Check to make sure the sending profile exists
 	s, err := GetSMTPByName(c.SMTP.Name, uid)
 	if err == gorm.ErrRecordNotFound {

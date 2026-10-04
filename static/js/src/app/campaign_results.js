@@ -36,6 +36,21 @@ var statuses = {
         icon: "fa-mouse-pointer",
         point: "ct-point-clicked"
     },
+    // Security-scanner / sandbox interactions (not counted in the funnel).
+    // Rendered muted and distinct so they are visible on the timeline without
+    // being confused with a real recipient action.
+    "Email Opened (scanner)": {
+        color: "#aab2bd",
+        label: "label-default",
+        icon: "fa-shield",
+        point: "ct-point-opened"
+    },
+    "Clicked Link (scanner)": {
+        color: "#aab2bd",
+        label: "label-default",
+        icon: "fa-shield",
+        point: "ct-point-clicked"
+    },
     "Success": {
         color: "#f05b4f",
         label: "label-danger",
@@ -385,9 +400,10 @@ function renderTimeline(data) {
             // Add the event
             results += '<div class="timeline-entry">' +
                 '    <div class="timeline-bar"></div>'
+            var evStatus = statuses[event.message] || statuses["Unknown"]
             results +=
-                '    <div class="timeline-icon ' + statuses[event.message].label + '">' +
-                '    <i class="fa ' + statuses[event.message].icon + '"></i></div>' +
+                '    <div class="timeline-icon ' + evStatus.label + '">' +
+                '    <i class="fa ' + evStatus.icon + '"></i></div>' +
                 '    <div class="timeline-message">' + escapeHtml(event.message) +
                 '    <span class="timeline-date">' + moment.utc(event.time).local().format('MMMM Do YYYY h:mm:ss a') + '</span>'
             if (event.details) {
@@ -644,7 +660,7 @@ function poll() {
                     x: event_date.valueOf(),
                     y: 1,
                     marker: {
-                        fillColor: statuses[event.message].color
+                        fillColor: (statuses[event.message] || statuses["Unknown"]).color
                     }
                 })
             })
@@ -848,7 +864,7 @@ function load() {
                         x: event_date.valueOf(),
                         y: 1,
                         marker: {
-                            fillColor: statuses[event.message].color
+                            fillColor: (statuses[event.message] || statuses["Unknown"]).color
                         }
                     })
                 })

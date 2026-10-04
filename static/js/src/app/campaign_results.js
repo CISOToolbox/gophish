@@ -918,44 +918,43 @@ function refresh() {
     setRefresh = setTimeout(refresh, 60000)
 };
 
+// report_mail lets an admin manually declare that a recipient reported the
+// simulated phishing email, specifying the channel it came through and the
+// time it happened. It records the report server-side (channel + time) rather
+// than hitting the public /report endpoint.
 function report_mail(rid, cid) {
+    var nowLocal = moment().format("YYYY-MM-DDTHH:mm")
     Swal.fire({
-        title: "Are you sure?",
-        text: "This result will be flagged as reported (RID: " + rid + ")",
-        type: "question",
-        animation: false,
+        title: "Declare a report",
+        html: '<p style="text-align:left;margin-bottom:12px">Manually record that this recipient reported the phishing email (RID: ' + escapeHtml(rid) + ').</p>' +
+            '<label style="display:block;text-align:left;font-weight:600">Channel</label>' +
+            '<input id="swal-report-channel" class="swal2-input" style="margin:4px 0" placeholder="e.g. Email, Slack, Teams, Phone" list="swal-report-channels">' +
+            '<datalist id="swal-report-channels"><option value="Email"></option><option value="Slack"></option><option value="Microsoft Teams"></option><option value="Phone"></option><option value="Helpdesk"></option></datalist>' +
+            '<label style="display:block;text-align:left;font-weight:600;margin-top:8px">Reported at</label>' +
+            '<input id="swal-report-date" type="datetime-local" class="swal2-input" style="margin:4px 0" value="' + nowLocal + '">',
+        focusConfirm: false,
         showCancelButton: true,
-        confirmButtonText: "Continue",
+        confirmButtonText: "Declare report",
         confirmButtonColor: "#428bca",
         reverseButtons: true,
         allowOutsideClick: false,
-        showLoaderOnConfirm: true
+        showLoaderOnConfirm: true,
+        preConfirm: function () {
+            var channel = document.getElementById('swal-report-channel').value
+            var dateVal = document.getElementById('swal-report-date').value
+            var reportDate = dateVal ? moment(dateVal).utc().format() : null
+            return new Promise(function (resolve, reject) {
+                api.campaignId.declareReport(cid, rid, { channel: channel, report_date: reportDate })
+                    .success(function () { resolve() })
+                    .error(function (data) {
+                        reject((data.responseJSON && data.responseJSON.message) || "Error declaring report")
+                    })
+            }).catch(function (msg) { Swal.showValidationMessage(msg) })
+        }
     }).then(function (result) {
-        if (result.value){
-            api.campaignId.get(cid).success((function(c) {
-                report_url = new URL(c.url)
-                report_url.pathname = '/report'
-                report_url.search = "?rid=" + rid 
-                fetch(report_url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-                    refresh();
-                })
-                .catch(error => {
-                    let errorMessage = error.message;
-                    if (error.message === "Failed to fetch") {
-                        errorMessage = "This might be due to Mixed Content issues or network problems.";
-                    }
-                    Swal.fire({
-                        title: 'Error',
-                        text: errorMessage,
-                        type: 'error',
-                        confirmButtonText: 'Close'
-                    });
-                });
-            }));
+        if (result.value) {
+            Swal.fire("Report declared!", "", "success")
+            refresh()
         }
     })
 }

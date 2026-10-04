@@ -3,6 +3,7 @@ package models
 import (
 	"net/mail"
 	"regexp"
+	"strings"
 	"time"
 
 	"gopkg.in/check.v1"
@@ -117,4 +118,32 @@ func (s *ModelsSuite) TestDuplicateResults(ch *check.C) {
 	ch.Assert(len(c.Results), check.Equals, 2)
 	ch.Assert(c.Results[0].Email, check.Equals, group.Targets[0].Email)
 	ch.Assert(c.Results[1].Email, check.Equals, group.Targets[2].Email)
+}
+
+func (s *ModelsSuite) TestHandleEmailReportManual(c *check.C) {
+	campaign := s.createCampaign(c)
+	cr, err := GetCampaignResults(campaign.Id, campaign.UserId)
+	c.Assert(err, check.Equals, nil)
+	c.Assert(len(cr.Results) > 0, check.Equals, true)
+	r := cr.Results[0]
+
+	reportTime := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	c.Assert(r.HandleEmailReportManual(reportTime, "Slack"), check.Equals, nil)
+
+	// The result is flagged reported.
+	reloaded, err := GetResult(r.RId)
+	c.Assert(err, check.Equals, nil)
+	c.Assert(reloaded.Reported, check.Equals, true)
+
+	// A reported event exists with the manual channel and the specified time.
+	after, err := GetCampaignResults(campaign.Id, campaign.UserId)
+	c.Assert(err, check.Equals, nil)
+	found := false
+	for _, e := range after.Events {
+		if e.Message == EventReported && strings.Contains(e.Details, "Slack") {
+			found = true
+			c.Assert(e.Time.UTC().Equal(reportTime), check.Equals, true)
+		}
+	}
+	c.Assert(found, check.Equals, true)
 }

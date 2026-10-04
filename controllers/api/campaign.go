@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gophish/gophish/audit"
 	ctx "github.com/gophish/gophish/context"
@@ -185,6 +186,43 @@ func (as *Server) CampaignSummary(w http.ResponseWriter, r *http.Request) {
 		}
 		JSONResponse(w, cs, http.StatusOK)
 	}
+}
+
+// CampaignResultReport lets an admin manually declare that a recipient
+// reported the simulated phishing email, specifying the channel it was
+// reported through and the time it happened.
+func (as *Server) CampaignResultReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		return
+	}
+	vars := mux.Vars(r)
+	id, _ := strconv.ParseInt(vars["id"], 0, 64)
+	rid := vars["rid"]
+	uid := ctx.Get(r, "user_id").(int64)
+	// Declaring a report mutates the campaign, so it stays owner-scoped.
+	if _, err := models.GetCampaign(id, uid); err != nil {
+		JSONResponse(w, models.Response{Success: false, Message: "Campaign not found"}, http.StatusNotFound)
+		return
+	}
+	result, err := models.GetResult(rid)
+	if err != nil || result.CampaignId != id || result.UserId != uid {
+		JSONResponse(w, models.Response{Success: false, Message: "Result not found"}, http.StatusNotFound)
+		return
+	}
+	req := struct {
+		Channel    string    `json:"channel"`
+		ReportDate time.Time `json:"report_date"`
+	}{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		JSONResponse(w, models.Response{Success: false, Message: "Invalid request"}, http.StatusBadRequest)
+		return
+	}
+	if err := result.HandleEmailReportManual(req.ReportDate, req.Channel); err != nil {
+		log.Error(err)
+		JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusInternalServerError)
+		return
+	}
+	JSONResponse(w, models.Response{Success: true, Message: "Report recorded"}, http.StatusOK)
 }
 
 // CampaignComplete effectively "ends" a campaign.

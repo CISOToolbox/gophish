@@ -14,7 +14,7 @@ curl -k -H "Authorization: Bearer $API_KEY" https://localhost:3333/api/campaigns
 curl -k "https://localhost:3333/api/campaigns/?api_key=$API_KEY"
 ```
 
-Find your API key under **Settings** in the console; you can rotate it there (or via `POST /api/reset`). The key identifies a user, and permissions are enforced per user (some endpoints require admin).
+Find your API key under **Settings** in the console (it is masked by default — use the reveal/copy buttons); you can rotate it there (or via `POST /api/reset`). The key identifies a user, and permissions are enforced per user (some endpoints require admin).
 
 > Requests to `/api/*` are authenticated by API key only — the console's session/CSRF protection does not apply to the token-authenticated API. Keep the admin server private and treat the API key as a secret.
 
@@ -35,6 +35,7 @@ Reads return the requested object(s) as JSON. Errors return:
 | GET | `/api/campaigns/summary` | Roll-up stats across campaigns |
 | GET / DELETE | `/api/campaigns/{id}` | Fetch / delete a campaign |
 | GET | `/api/campaigns/{id}/results` | Per-recipient results and events |
+| POST | `/api/campaigns/{id}/results/{rid}/report` | Manually declare a report (body `{channel, report_date}`) |
 | GET | `/api/campaigns/{id}/summary` | Aggregate funnel for one campaign |
 | GET | `/api/campaigns/{id}/complete` | Mark a campaign complete |
 

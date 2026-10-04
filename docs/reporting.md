@@ -28,6 +28,10 @@ Each result carries a status reflecting how far that recipient got: scheduled �
 
 If a campaign has **[Ignore security scanner interactions](campaigns.md#ignoring-security-scanner-interactions)** enabled, detonations by mail sandboxes (e.g. Safe Links) appear on the timeline as `Clicked Link (scanner)` / `Email Opened (scanner)` but are **not** counted in the funnel above. This keeps the open/click rates reflective of real recipients.
 
+## Declaring a report manually
+
+Recipients often report a simulated phish **out of band** — to the helpdesk, over Slack/Teams, or by phone — rather than through an automated button. An admin can record these: on the campaign results table, click the report icon in the **Reported** column for a recipient and specify the **channel** (e.g. Email, Slack, Phone) and the **time** it was reported. This flags the result as reported (counted in the funnel) and adds a timeline event noting it was a manual report and through which channel.
+
 ## Exporting
 
 Campaign results can be **exported to CSV** from the console for offline analysis or to feed an awareness dashboard.

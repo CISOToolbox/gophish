@@ -162,6 +162,34 @@ func (r *Result) HandleEmailReport(details EventDetails) error {
 	return db.Save(r).Error
 }
 
+// HandleEmailReportManual records a report declared manually by an admin (for
+// example when a user reported the simulation out-of-band, via a chat channel
+// or to the helpdesk). The reporting channel and time are provided by the
+// admin rather than derived from an HTTP request.
+func (r *Result) HandleEmailReportManual(reportTime time.Time, channel string) error {
+	details := map[string]interface{}{"manual": true}
+	if channel != "" {
+		details["channel"] = channel
+	}
+	event, err := r.createEvent(EventReported, details)
+	if err != nil {
+		return err
+	}
+	// createEvent stamps "now"; override with the admin-provided report time so
+	// the timeline reflects when the report actually happened.
+	if !reportTime.IsZero() {
+		event.Time = reportTime.UTC()
+		if err := db.Save(event).Error; err != nil {
+			return err
+		}
+		r.ModifiedDate = reportTime.UTC()
+	} else {
+		r.ModifiedDate = event.Time
+	}
+	r.Reported = true
+	return db.Save(r).Error
+}
+
 // UpdateGeo updates the latitude and longitude of the result in
 // the database given an IP address
 func (r *Result) UpdateGeo(addr string) error {

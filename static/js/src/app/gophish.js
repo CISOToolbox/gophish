@@ -107,6 +107,11 @@ var api = {
         // summary() - Queries the API for GET /campaigns/summary
         summary: function (id) {
             return query("/campaigns/" + id + "/summary", "GET", {}, true)
+        },
+        // declareReport() - Manually declares a report for a recipient at
+        // POST /campaigns/:id/results/:rid/report
+        declareReport: function (id, rid, data) {
+            return query("/campaigns/" + id + "/results/" + rid + "/report", "POST", data, false)
         }
     },
     // groups contains the endpoints for /groups

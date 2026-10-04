@@ -105,6 +105,10 @@
                         <i class="fa fa-question-circle" data-toggle="tooltip" data-placement="right" title="Location of Gophish listener (must be reachable by targets!)"></i>
                     </label>
                     <input type="text" class="form-control" placeholder="http://192.168.1.1" id="url" />
+                    <div class="checkbox checkbox-primary">
+                        <input id="ignore_scanners_checkbox" type="checkbox">
+                        <label for="ignore_scanners_checkbox">Ignore security scanner interactions <i class="fa fa-question-circle" data-toggle="tooltip" data-placement="right" title="When enabled, opens/clicks that look like a mail security scanner or sandbox (e.g. Microsoft Defender Safe Links) are logged to the timeline but not counted as recipient opens/clicks."></i></label>
+                    </div>
                     <div class="row">
                         <div class="col-md-6">
                             <label class="control-label" for="url">Launch Date </label>

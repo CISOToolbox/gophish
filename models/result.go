@@ -123,6 +123,21 @@ func (r *Result) HandleClickedLink(details EventDetails) error {
 	return db.Save(r).Error
 }
 
+// HandleScannerOpened records an email-open that was attributed to a security
+// scanner / sandbox. It is logged to the timeline but deliberately does NOT
+// change the Result's status, so it is not counted in the campaign funnel.
+func (r *Result) HandleScannerOpened(details EventDetails) error {
+	_, err := r.createEvent(EventScannerOpened, details)
+	return err
+}
+
+// HandleScannerClicked records a link-click that was attributed to a security
+// scanner / sandbox. Like HandleScannerOpened it never advances the status.
+func (r *Result) HandleScannerClicked(details EventDetails) error {
+	_, err := r.createEvent(EventScannerClicked, details)
+	return err
+}
+
 // HandleFormSubmit updates a Result in the case where the recipient submitted
 // credentials to the form on a Landing Page.
 func (r *Result) HandleFormSubmit(details EventDetails) error {

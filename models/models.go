@@ -54,14 +54,21 @@ const (
 	EventClicked       string = "Clicked Link"
 	EventDataSubmit    string = "Submitted Data"
 	EventReported      string = "Email Reported"
-	EventProxyRequest  string = "Proxied request"
-	StatusSuccess      string = "Success"
-	StatusQueued       string = "Queued"
-	StatusSending      string = "Sending"
-	StatusUnknown      string = "Unknown"
-	StatusScheduled    string = "Scheduled"
-	StatusRetry        string = "Retrying"
-	Error              string = "Error"
+	// EventScannerOpened and EventScannerClicked record interactions that were
+	// attributed to a security scanner / mail sandbox (e.g. Microsoft Defender
+	// Safe Links) rather than a real recipient. They are logged to the timeline
+	// for transparency but never advance a Result's status, so they are not
+	// counted in the campaign funnel.
+	EventScannerOpened  string = "Email Opened (scanner)"
+	EventScannerClicked string = "Clicked Link (scanner)"
+	EventProxyRequest   string = "Proxied request"
+	StatusSuccess       string = "Success"
+	StatusQueued        string = "Queued"
+	StatusSending       string = "Sending"
+	StatusUnknown       string = "Unknown"
+	StatusScheduled     string = "Scheduled"
+	StatusRetry         string = "Retrying"
+	Error               string = "Error"
 )
 
 // Flash is used to hold flash information for use in templates.

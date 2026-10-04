@@ -43,6 +43,7 @@ function launch() {
                         name: $("#template").select2("data")[0].text
                     },
                     url: $("#url").val(),
+                    ignore_scanners: $("#ignore_scanners_checkbox").prop("checked"),
                     page: {
                         name: $("#page").select2("data")[0].text
                     },
@@ -124,6 +125,7 @@ function dismiss() {
     $("#page").val("").change();
     $("#educational_page").val("").change();
     $("#url").val("");
+    $("#ignore_scanners_checkbox").prop("checked", false);
     $("#profile").val("").change();
     $("#users").val("").change();
     $("#modal").modal('hide');
@@ -309,6 +311,7 @@ function copy(idx) {
                 $("#profile").trigger("change.select2")
             }
             $("#url").val(campaign.url)
+            $("#ignore_scanners_checkbox").prop("checked", campaign.ignore_scanners)
         })
         .error(function (data) {
             $("#modal\\.flashes").empty().append("<div style=\"text-align:center\" class=\"alert alert-danger\">\

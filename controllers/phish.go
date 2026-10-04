@@ -149,6 +149,7 @@ func (ps *PhishingServer) TrackHandler(w http.ResponseWriter, r *http.Request) {
 	rs := ctx.Get(r, "result").(models.Result)
 	rid := ctx.Get(r, "rid").(string)
 	d := ctx.Get(r, "details").(models.EventDetails)
+	c := ctx.Get(r, "campaign").(models.Campaign)
 
 	// Check for a transparency request
 	if strings.HasSuffix(rid, TransparencySuffix) {
@@ -156,7 +157,13 @@ func (ps *PhishingServer) TrackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = rs.HandleEmailOpened(d)
+	if c.IgnoreScanners && isScannerInteraction(rs, d) {
+		// Security scanner / sandbox pre-fetching the tracking pixel: record
+		// for transparency but do not count it as a recipient open.
+		err = rs.HandleScannerOpened(d)
+	} else {
+		err = rs.HandleEmailOpened(d)
+	}
 	if err != nil {
 		log.Error(err)
 	}
@@ -247,7 +254,13 @@ func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case r.Method == "GET":
-		err = rs.HandleClickedLink(d)
+		if c.IgnoreScanners && isScannerInteraction(rs, d) {
+			// Security scanner / sandbox detonation: record for transparency
+			// but do not count it as a recipient click.
+			err = rs.HandleScannerClicked(d)
+		} else {
+			err = rs.HandleClickedLink(d)
+		}
 		if err != nil {
 			log.Error(err)
 		}

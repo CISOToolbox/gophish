@@ -37,6 +37,12 @@ type Campaign struct {
 	SMTPId            int64           `json:"-"`
 	SMTP              SMTP            `json:"smtp"`
 	URL               string          `json:"url"`
+	// IgnoreScanners, when true, makes the phishing server treat interactions
+	// that look like a security scanner / mail sandbox (e.g. Microsoft Defender
+	// Safe Links) as non-counting: they are logged to the timeline but do not
+	// advance the recipient's status, so automated detonations don't inflate
+	// the open/click funnel.
+	IgnoreScanners bool `json:"ignore_scanners" gorm:"column:ignore_scanners"`
 }
 
 // CampaignResults is a struct representing the results from a campaign

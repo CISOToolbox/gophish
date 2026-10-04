@@ -24,6 +24,10 @@ Beyond the aggregate counts, each result has a timeline of individual **events**
 
 Each result carries a status reflecting how far that recipient got: scheduled → sending → sent → opened → clicked → submitted, plus reported and error states.
 
+## Security-scanner interactions
+
+If a campaign has **[Ignore security scanner interactions](campaigns.md#ignoring-security-scanner-interactions)** enabled, detonations by mail sandboxes (e.g. Safe Links) appear on the timeline as `Clicked Link (scanner)` / `Email Opened (scanner)` but are **not** counted in the funnel above. This keeps the open/click rates reflective of real recipients.
+
 ## Exporting
 
 Campaign results can be **exported to CSV** from the console for offline analysis or to feed an awareness dashboard.

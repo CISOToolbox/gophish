@@ -13,8 +13,20 @@ A **campaign** runs an engagement: it ties together an [email template](email-te
 | **URL** | The public base URL targets will reach — i.e. where your **phishing server** is reachable from the targets' network (e.g. `https://links.example.com`). This is what `{{.URL}}` is built from, so it must be reachable by targets. |
 | **Launch Date** | When sending starts. |
 | **Send Emails By** (optional) | If set, emails are spread evenly between the launch date and this date, instead of all at once. |
+| **Ignore security scanner interactions** | *(fork feature)* When enabled, opens/clicks that look like a mail security scanner or sandbox are logged but **not counted** as recipient activity. See below. |
 | **Sending Profile** | The SMTP profile used to send. |
 | **Groups** | The recipient lists to target (de-duplicated by email). |
+
+## Ignoring security-scanner interactions
+
+Mail security products (e.g. Microsoft Defender **Safe Links**, Proofpoint, Mimecast) automatically **detonate** links and pre-fetch tracking pixels, which would otherwise inflate a campaign's *opened* and *clicked* numbers with activity that is not a real recipient.
+
+When **Ignore security scanner interactions** is enabled on a campaign, the phishing server reclassifies an interaction as a scanner when **both** of these hold:
+
+1. it occurs within a short window (60s) of the email being sent to that recipient (sandboxes detonate almost instantly), **and**
+2. its `User-Agent` matches a known scanner/automation (headless browsers, and vendors such as Microsoft, Proofpoint, Mimecast, Barracuda, …).
+
+Matched interactions are recorded on the timeline as **`Clicked Link (scanner)`** / **`Email Opened (scanner)`** for transparency, but they do **not** advance the recipient's status, so they are excluded from the funnel. A genuine open/click from the same recipient afterwards is counted normally. Form submissions (POST) are always counted. The option is **off by default**.
 
 > The **URL** must point at the phishing server as seen by your targets, not at `localhost`. Getting this wrong is the most common reason links don't track.
 

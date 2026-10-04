@@ -1,5 +1,36 @@
 $(document).ready(function () {
     $('[data-toggle="tooltip"]').tooltip();
+    // Reveal / hide the (masked) API key.
+    $("#toggle_api_key").click(function () {
+        var input = $("#api_key")
+        var isHidden = input.attr("type") === "password"
+        input.attr("type", isHidden ? "text" : "password")
+        $(this).find("i").toggleClass("fa-eye fa-eye-slash")
+        if (isHidden) {
+            input.select()
+        }
+    })
+    // Copy the API key to the clipboard (works whether masked or shown).
+    $("#copy_api_key").click(function () {
+        var value = $("#api_key").val()
+        var done = function () { successFlash("API key copied to clipboard") }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value).then(done).catch(function () {
+                fallbackCopy()
+            })
+        } else {
+            fallbackCopy()
+        }
+        function fallbackCopy() {
+            var input = $("#api_key")
+            var wasHidden = input.attr("type") === "password"
+            if (wasHidden) { input.attr("type", "text") }
+            input[0].select()
+            try { document.execCommand("copy"); done() } catch (err) { errorFlash("Could not copy API key") }
+            if (wasHidden) { input.attr("type", "password") }
+            window.getSelection().removeAllRanges()
+        }
+    })
     $("#apiResetForm").submit(function (e) {
         api.reset()
             .success(function (response) {

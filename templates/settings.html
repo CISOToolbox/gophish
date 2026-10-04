@@ -30,8 +30,13 @@
             <div class="row">
                 <label for="api_key" class="col-sm-2 control-label form-label">API Key:</label>
                 <div class="col-md-6">
-                    <input type="text" id="api_key" onclick="this.select();" value="{{.User.ApiKey}}"
-                        class="form-control" readonly />
+                    <div class="input-group">
+                        <input type="password" id="api_key" value="{{.User.ApiKey}}" class="form-control" readonly />
+                        <span class="input-group-btn">
+                            <button class="btn btn-default" type="button" id="toggle_api_key" title="Show/Hide API key"><i class="fa fa-eye"></i></button>
+                            <button class="btn btn-default" type="button" id="copy_api_key" title="Copy API key"><i class="fa fa-clipboard"></i></button>
+                        </span>
+                    </div>
                 </div>
                 <form id="apiResetForm">
                     <button class="btn btn-primary"><i class="fa fa-refresh" type="submit"></i> Reset</button>

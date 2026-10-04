@@ -3,7 +3,7 @@
 CISO Toolbox — ciso-gophish
 ===========================
 
-[![CI](https://github.com/CISOToolbox/ciso-gophish/actions/workflows/ci.yml/badge.svg)](https://github.com/CISOToolbox/ciso-gophish/actions/workflows/ci.yml)
+[![CI](https://github.com/CISOToolbox/gophish/actions/workflows/ci.yml/badge.svg)](https://github.com/CISOToolbox/gophish/actions/workflows/ci.yml)
 
 The phishing-simulation tool of the [CISO Toolbox](https://cisotoolbox.org) project — an authorized phishing toolkit for businesses, penetration testers and security-awareness training. It lets you set up and run phishing engagements end to end, then measure who opened, clicked, submitted data, or reported the message.
 

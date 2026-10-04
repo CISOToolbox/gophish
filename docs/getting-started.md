@@ -29,8 +29,8 @@ podman run -d --name ciso-gophish \
 Requires **Go 1.26+** and **Node.js 22** (for the front-end assets).
 
 ```bash
-git clone https://github.com/CISOToolbox/ciso-gophish.git
-cd ciso-gophish
+git clone https://github.com/CISOToolbox/gophish.git
+cd gophish
 
 # 1. Front-end assets (esbuild)
 corepack enable

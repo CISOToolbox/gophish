@@ -1,7 +1,7 @@
 ![gophish logo](https://raw.github.com/gophish/gophish/master/static/images/gophish_purple.png)
 
-CISO Toolbox — ciso-gophish
-===========================
+CISO Toolbox — gophish
+======================
 
 [![CI](https://github.com/CISOToolbox/gophish/actions/workflows/ci.yml/badge.svg)](https://github.com/CISOToolbox/gophish/actions/workflows/ci.yml)
 

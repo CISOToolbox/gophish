@@ -1,34 +1,37 @@
 $(document).ready(function () {
     $('[data-toggle="tooltip"]').tooltip();
-    // Reveal / hide the (masked) API key.
-    $("#toggle_api_key").click(function () {
-        var input = $("#api_key")
-        var isHidden = input.attr("type") === "password"
-        input.attr("type", isHidden ? "text" : "password")
+    // Reveal / hide the (masked) API key. Use the native DOM type property to
+    // avoid jQuery's restrictions on changing an input's type.
+    $("#toggle_api_key").on("click", function () {
+        var el = document.getElementById("api_key")
+        if (!el) { return }
+        el.type = el.type === "password" ? "text" : "password"
         $(this).find("i").toggleClass("fa-eye fa-eye-slash")
-        if (isHidden) {
-            input.select()
-        }
     })
-    // Copy the API key to the clipboard (works whether masked or shown).
-    $("#copy_api_key").click(function () {
-        var value = $("#api_key").val()
-        var done = function () { successFlash("API key copied to clipboard") }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(value).then(done).catch(function () {
-                fallbackCopy()
-            })
-        } else {
-            fallbackCopy()
+    // Copy the API key to the clipboard. Copy from a throwaway <textarea> so it
+    // works regardless of the field being masked, and fall back to execCommand
+    // when the async Clipboard API is unavailable (e.g. non-secure context).
+    $("#copy_api_key").on("click", function () {
+        var value = document.getElementById("api_key").value
+        var ok = function () { successFlash("API key copied to clipboard") }
+        var fail = function () { errorFlash("Could not copy — select the key and copy manually") }
+        var fallback = function () {
+            var ta = document.createElement("textarea")
+            ta.value = value
+            ta.setAttribute("readonly", "")
+            ta.style.position = "fixed"
+            ta.style.top = "-1000px"
+            document.body.appendChild(ta)
+            ta.select()
+            var copied = false
+            try { copied = document.execCommand("copy") } catch (e) { copied = false }
+            document.body.removeChild(ta)
+            copied ? ok() : fail()
         }
-        function fallbackCopy() {
-            var input = $("#api_key")
-            var wasHidden = input.attr("type") === "password"
-            if (wasHidden) { input.attr("type", "text") }
-            input[0].select()
-            try { document.execCommand("copy"); done() } catch (err) { errorFlash("Could not copy API key") }
-            if (wasHidden) { input.attr("type", "password") }
-            window.getSelection().removeAllRanges()
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value).then(ok).catch(fallback)
+        } else {
+            fallback()
         }
     })
     $("#apiResetForm").submit(function (e) {

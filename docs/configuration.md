@@ -49,6 +49,8 @@ ciso-gophish reads a JSON configuration file (`config.json` in the working direc
 | `logging.level` | Log level (empty = default). |
 | `audit_log_path` | Path of the security audit log (default `gophish_audit.log`). See [Audit log](#audit-log). |
 
+> Security-scanner detection (used by the per-campaign *Ignore security scanner interactions* option) is **not** configured here — it is edited from the admin UI under **Scanner Detection**. See [campaigns](campaigns.md#ignoring-security-scanner-interactions).
+
 ## Environment variables (container)
 
 `docker/run.sh` maps these variables onto `config.json` before launching the server:

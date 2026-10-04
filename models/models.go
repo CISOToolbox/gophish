@@ -270,5 +270,11 @@ func Setup(c *config.Config) error {
 			return err
 		}
 	}
+	// Seed the scanner-detection settings row with defaults on first run so it
+	// is editable from the admin UI.
+	if err = ensureScannerSettings(); err != nil {
+		log.Error(err)
+		return err
+	}
 	return nil
 }

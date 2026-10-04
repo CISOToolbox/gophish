@@ -2,39 +2,54 @@ package controllers
 
 import (
 	"testing"
-	"time"
 
 	"github.com/gophish/gophish/models"
 )
 
-func details(ua string) models.EventDetails {
-	return models.EventDetails{Browser: map[string]string{"user-agent": ua}}
+// defaultSettings mirrors the seeded defaults for pure-function tests
+// (Chrome/Edge floor 125, Firefox floor 120, Safari check disabled).
+func defaultSettings() models.ScannerSettings {
+	return models.ScannerSettings{
+		WindowSeconds: 120,
+		MinChrome:     125,
+		MinFirefox:    120,
+		MinSafari:     0,
+		UserAgents:    "headlesschrome\nproofpoint\ncurl/",
+	}
 }
 
-func resultSentAgo(d time.Duration) models.Result {
-	return models.Result{SendDate: time.Now().Add(-d)}
-}
-
-func TestIsScannerInteraction(t *testing.T) {
-	chrome := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
-	headless := "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/120.0 Safari/537.36"
-
+func TestIsOutdatedBrowser(t *testing.T) {
+	s := defaultSettings()
 	cases := []struct {
-		name string
-		rs   models.Result
-		d    models.EventDetails
+		ua   string
 		want bool
 	}{
-		{"scanner UA within window", resultSentAgo(5 * time.Second), details(headless), true},
-		{"vendor UA within window", resultSentAgo(10 * time.Second), details("ProofPoint-Scanner/1.0"), true},
-		{"scanner UA but window elapsed", resultSentAgo(5 * time.Minute), details(headless), false},
-		{"real browser within window", resultSentAgo(5 * time.Second), details(chrome), false},
-		{"empty user-agent within window", resultSentAgo(5 * time.Second), details(""), false},
-		{"zero send date", models.Result{}, details(headless), false},
+		{"mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/109.0.0.0 safari/537.36", true},        // safe links pin
+		{"mozilla/5.0 (macintosh; intel mac os x 10_15_7) applewebkit/537.36 (khtml, like gecko) chrome/143.0.0.0 safari/537.36", false}, // real, near-current
+		{"mozilla/5.0 (windows nt 10.0) applewebkit/537.36 (khtml, like gecko) chrome/124.0.0.0 safari/537.36", true},                    // 124 < 125
+		{"mozilla/5.0 (windows nt 10.0) applewebkit/537.36 (khtml, like gecko) chrome/130.0.0.0 safari/537.36", false},                   // 130 >= 125
+		{"mozilla/5.0 applewebkit/537.36 (khtml, like gecko) chrome/143.0.0.0 safari/537.36 edg/109.0.0.0", true},                        // edge checked first
+		{"mozilla/5.0 (x11; linux x86_64; rv:102.0) gecko/20100101 firefox/102.0", true},
+		{"mozilla/5.0 (x11; linux x86_64; rv:128.0) gecko/20100101 firefox/128.0", false},
+		{"mozilla/5.0 (macintosh) applewebkit/605 (khtml, like gecko) version/14.1 safari/605", false}, // safari check disabled (min 0)
+		{"curl/8.0.1", false}, // no browser version
 	}
 	for _, tc := range cases {
-		if got := isScannerInteraction(tc.rs, tc.d); got != tc.want {
-			t.Errorf("%s: isScannerInteraction = %v, want %v", tc.name, got, tc.want)
+		if got := isOutdatedBrowser(tc.ua, s); got != tc.want {
+			t.Errorf("isOutdatedBrowser(%q) = %v, want %v", tc.ua, got, tc.want)
 		}
+	}
+}
+
+func TestMatchesKnownScanner(t *testing.T) {
+	markers := defaultSettings().UserAgentList()
+	if !matchesKnownScanner("mozilla/5.0 headlesschrome/120 safari/537", markers) {
+		t.Error("expected headlesschrome to match")
+	}
+	if !matchesKnownScanner("proofpoint-scanner/1.0", markers) {
+		t.Error("expected proofpoint to match")
+	}
+	if matchesKnownScanner("mozilla/5.0 (macintosh) chrome/143.0.0.0 safari/537.36", markers) {
+		t.Error("did not expect a clean chrome UA to match")
 	}
 }

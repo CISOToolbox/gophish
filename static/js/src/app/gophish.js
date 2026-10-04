@@ -217,6 +217,15 @@ var api = {
             return query("/educational_pages/" + id, "DELETE", {}, false)
         }
     },
+    // scanner contains the endpoints for /scanner (global scanner-detection settings)
+    scanner: {
+        get: function () {
+            return query("/scanner/", "GET", {}, false)
+        },
+        put: function (settings) {
+            return query("/scanner/", "PUT", settings, false)
+        }
+    },
     // SMTP contains the endpoints for /smtp
     SMTP: {
         // get() - Queries the API for GET /smtp

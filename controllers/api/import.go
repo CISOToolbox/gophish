@@ -200,6 +200,15 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// Strip scripts from the clone. Modern login pages submit their form via
+	// JavaScript (fetch/XHR with preventDefault), which would stop the form
+	// from ever POSTing back to the phishing server — and therefore stop the
+	// "Submitted Data" event and the educational page from being served.
+	// Removing the scripts (and the forms' inline handlers below) guarantees a
+	// plain native POST on submit.
+	d.Find("script").Remove()
+	d.Find("noscript").Remove()
+
 	forms := d.Find("form")
 	forms.Each(func(i int, f *goquery.Selection) {
 		// We'll want to store where we got the form from
@@ -209,6 +218,21 @@ func (as *Server) ImportSite(w http.ResponseWriter, r *http.Request) {
 			url = fmt.Sprintf("%s%s", cr.URL, url)
 		}
 		f.PrependHtml(fmt.Sprintf("<input type=\"hidden\" name=\"__original_url\" value=\"%s\"/>", url))
+		// Force a native POST so the submit reaches the phishing server (which
+		// then serves the educational page). The action is emptied on save by
+		// the Page model, so we only need to pin the method and drop any inline
+		// submit handlers here.
+		f.SetAttr("method", "post")
+		f.RemoveAttr("onsubmit")
+		// Neutralize JS-driven submit controls so they submit the form
+		// natively rather than calling a handler.
+		f.Find("button, input[type=\"submit\"], input[type=\"button\"]").Each(func(j int, b *goquery.Selection) {
+			b.RemoveAttr("onclick")
+			b.RemoveAttr("formaction")
+			if goquery.NodeName(b) == "button" {
+				b.SetAttr("type", "submit")
+			}
+		})
 	})
 	h, err := d.Html()
 	if err != nil {

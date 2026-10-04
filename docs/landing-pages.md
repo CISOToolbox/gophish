@@ -25,7 +25,9 @@ The **Import Site** button clones an existing page by URL to use as a starting p
 - **Download & inline CSS** — fetch each linked stylesheet and embed it in the page, so the styling stays local and independent of the original site.
 - **Embed images & fonts** — also download images (and CSS-referenced resources) and embed them as `data:` URIs, producing a fully self-contained page. This makes a larger page but removes all external dependencies.
 
-> Single-page apps that build their form in JavaScript may not clone cleanly, since the importer captures the served HTML, not the JS-rendered DOM. Review and adjust imported pages before use.
+To make the cloned page behave as a landing page, the importer **removes the page's `<script>` tags and inline submit handlers and forces each form to POST**. This is important: many real login pages submit via JavaScript (fetch/XHR), which would otherwise prevent the form from posting back to the phishing server — and thus prevent the **Submitted Data** event and the educational page from being served. With scripts stripped, a submit does a plain native POST and the flow works reliably.
+
+> Single-page apps that build their form entirely in JavaScript may still not clone cleanly, since the importer captures the served HTML, not the JS-rendered DOM. Review imported pages before use.
 
 ## Forms and post-submit behavior
 

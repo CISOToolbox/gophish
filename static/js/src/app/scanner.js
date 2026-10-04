@@ -35,5 +35,12 @@ function save() {
 }
 
 $(document).ready(function () {
+    // Prevent a native form submit (e.g. pressing Enter in a field) from
+    // reloading the page and discarding changes — route it to save() instead.
+    $("#scannerForm").on("submit", function (e) {
+        e.preventDefault()
+        save()
+        return false
+    })
     load()
 })

@@ -1,6 +1,6 @@
 # Landing pages
 
-A **landing page** is the web page a target reaches after clicking the tracked link. It can display content, capture submitted form data, and redirect the target afterwards.
+A **landing page** is the web page a target reaches after clicking the tracked link. It can display content and capture submitted form data. What the target sees after submitting is controlled per campaign by the optional [educational page](educational-pages.md).
 
 ## Fields
 
@@ -10,7 +10,6 @@ A **landing page** is the web page a target reaches after clicking the tracked l
 | **HTML** | The page content (edited in the WYSIWYG/HTML editor). |
 | **Capture Submitted Data** | Record the form fields the target submits. See the warning below. |
 | **Capture Passwords** | Also record password fields. **Off by default and strongly discouraged** — see below. |
-| **Redirect to** | A URL the target is sent to after submitting the form (supports template variables). |
 
 ## Capturing data — read this
 
@@ -28,10 +27,10 @@ The **Import Site** button clones an existing page by URL to use as a starting p
 
 > Single-page apps that build their form in JavaScript may not clone cleanly, since the importer captures the served HTML, not the JS-rendered DOM. Review and adjust imported pages before use.
 
-## Redirects and forms
+## Forms and post-submit behavior
 
 - Any `<form>` on the page is rewritten so submissions post back to the phishing server (recording a **Submitted Data** event).
-- After submission, the target is sent to the **Redirect to** URL if set — unless the campaign selects an [educational page](educational-pages.md), which takes precedence and is shown instead.
+- After submission, if the campaign selects an [educational page](educational-pages.md) it is shown; otherwise the landing page is served again. (The legacy per-page "Redirect to" URL has been removed — use an educational page instead.)
 
 ## API
 

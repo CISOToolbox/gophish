@@ -11,7 +11,7 @@ This documentation lives entirely in the repository and does not depend on any e
 3. [Configuration](configuration.md) — `config.json`, environment variables, database
 4. [Sending profiles](sending-profiles.md) — SMTP configuration and test emails
 5. [Email templates](email-templates.md) — message content, template variables, tracking
-6. [Landing pages](landing-pages.md) — capture pages, site import, redirects
+6. [Landing pages](landing-pages.md) — capture pages, site import
 7. [Educational pages](educational-pages.md) — post-submit awareness pages (fork feature)
 8. [Groups & targets](groups.md) — recipient lists and CSV import
 9. [Campaigns](campaigns.md) — launching, scheduling, tracking

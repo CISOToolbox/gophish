@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"reflect"
 	"testing"
 
@@ -359,58 +358,4 @@ func TestTransparencyRequest(t *testing.T) {
 	transparencyRequest(t, ctx, result, rid, "/")
 	transparencyRequest(t, ctx, result, rid, "/track")
 	transparencyRequest(t, ctx, result, rid, "/report")
-}
-
-func TestRedirectTemplating(t *testing.T) {
-	ctx := setupTest(t)
-	defer tearDown(t, ctx)
-	p := models.Page{
-		Name:        "Redirect Page",
-		HTML:        "<html>Test</html>",
-		UserId:      1,
-		RedirectURL: "http://example.com/{{.RId}}",
-	}
-	err := models.PostPage(&p)
-	if err != nil {
-		t.Fatalf("error posting new page: %v", err)
-	}
-	smtp, _ := models.GetSMTP(1, 1)
-	template, _ := models.GetTemplate(1, 1)
-	group, _ := models.GetGroup(1, 1)
-
-	campaign := models.Campaign{Name: "Redirect campaign"}
-	campaign.UserId = 1
-	campaign.Template = template
-	campaign.Page = p
-	campaign.SMTP = smtp
-	campaign.Groups = []models.Group{group}
-	err = models.PostCampaign(&campaign, campaign.UserId)
-	if err != nil {
-		t.Fatalf("error creating campaign: %v", err)
-	}
-
-	client := http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	result := campaign.Results[0]
-	resp, err := client.PostForm(fmt.Sprintf("%s/?%s=%s", ctx.phishServer.URL, models.RecipientParameter, result.RId), url.Values{"username": {"test"}, "password": {"test"}})
-	if err != nil {
-		t.Fatalf("error requesting / endpoint: %v", err)
-	}
-	defer resp.Body.Close()
-	got := resp.StatusCode
-	expectedStatus := http.StatusFound
-	if got != expectedStatus {
-		t.Fatalf("invalid status code received for /track endpoint. expected %d got %d", expectedStatus, got)
-	}
-	expectedURL := fmt.Sprintf("http://example.com/%s", result.RId)
-	gotURL, err := resp.Location()
-	if err != nil {
-		t.Fatalf("error getting Location header from response: %v", err)
-	}
-	if gotURL.String() != expectedURL {
-		t.Fatalf("invalid redirect received. expected %s got %s", expectedURL, gotURL)
-	}
 }

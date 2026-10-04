@@ -17,13 +17,13 @@ Educational pages support the same [template variables](email-templates.md#templ
 
 ## How it is shown
 
-When a campaign has an educational page selected, the phishing server serves that page **in response to the landing-page form submission**. This takes **precedence over the landing page's "Redirect to" URL** — so a campaign can always steer users to a chosen awareness message regardless of the landing page's own redirect.
+When a campaign has an educational page selected, the phishing server serves that page **in response to the landing-page form submission** — so a campaign can steer users to a chosen awareness message after they submit.
 
-If no educational page is selected, behavior is unchanged: the landing page's redirect URL (if any) is used, otherwise the landing page is re-served.
+If no educational page is selected, the landing page is simply served again after submission.
 
 ## Using one in a campaign
 
-In the **New Campaign** dialog, the **Educational Page (Optional)** selector sits just below **Landing Page**. Leave it empty to keep the classic landing-page redirect behavior, or pick a page to show it after submission.
+In the **New Campaign** dialog, the **Educational Page (Optional)** selector sits just below **Landing Page**. Leave it empty to simply re-serve the landing page after submission, or pick a page to show it instead.
 
 ## API
 

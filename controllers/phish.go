@@ -296,20 +296,6 @@ func renderPhishResponse(w http.ResponseWriter, r *http.Request, ptx models.Phis
 		w.Write([]byte(html))
 		return
 	}
-	// If the request was a form submit and a redirect URL was specified, we
-	// should send the user to that URL
-	if r.Method == "POST" {
-		if p.RedirectURL != "" {
-			redirectURL, err := models.ExecuteTemplate(p.RedirectURL, ptx)
-			if err != nil {
-				log.Error(err)
-				http.NotFound(w, r)
-				return
-			}
-			http.Redirect(w, r, redirectURL, http.StatusFound)
-			return
-		}
-	}
 	// Otherwise, we just need to write out the templated HTML
 	html, err := models.ExecuteTemplate(p.HTML, ptx)
 	if err != nil {

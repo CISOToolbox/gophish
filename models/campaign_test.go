@@ -408,3 +408,25 @@ func (s *ModelsSuite) TestGetCampaignResults(ch *check.C) {
 	ch.Assert(cr.Name, check.Equals, c.Name)
 	ch.Assert(len(cr.Results), check.Equals, len(c.Results))
 }
+
+func (s *ModelsSuite) TestCampaignEventsOrderedByTime(c *check.C) {
+	campaign := s.createCampaign(c)
+	cr, err := GetCampaignResults(campaign.Id, campaign.UserId)
+	c.Assert(err, check.Equals, nil)
+	c.Assert(len(cr.Results) > 0, check.Equals, true)
+
+	// Declare a manual report backdated well before the campaign was created.
+	past := time.Now().UTC().Add(-48 * time.Hour)
+	r := cr.Results[0]
+	c.Assert(r.HandleEmailReportManual(past, "Slack"), check.Equals, nil)
+
+	cr, err = GetCampaignResults(campaign.Id, campaign.UserId)
+	c.Assert(err, check.Equals, nil)
+	c.Assert(len(cr.Events) > 1, check.Equals, true)
+	// Events are returned non-decreasing in time...
+	for i := 1; i < len(cr.Events); i++ {
+		c.Assert(cr.Events[i].Time.Before(cr.Events[i-1].Time), check.Equals, false)
+	}
+	// ...so the backdated manual report sorts to the front, not the end.
+	c.Assert(cr.Events[0].Message, check.Equals, EventReported)
+}

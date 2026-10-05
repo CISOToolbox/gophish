@@ -16,6 +16,8 @@ Each recipient advances through a funnel. The campaign summary aggregates the co
 
 Counts are **cumulative up the funnel**: a submission also counts as a click and an open, so the numbers are internally consistent (every "submitted" is also "clicked", etc.). An **Error** count tracks recipients whose send failed.
 
+On the campaign results page each funnel stage is shown as a **donut** displaying the count and, below it, the percentage of recipients. The donuts are **clickable**: clicking one filters the results table to the recipients **at that status** (for *Email Reported*, those who reported); click it again, or use **Clear filter**, to remove the filter.
+
 ## Events timeline
 
 Beyond the aggregate counts, each result has a timeline of individual **events** (with timestamps and details such as browser/user-agent for opens and clicks). This lets you see exactly when and how a given target interacted.

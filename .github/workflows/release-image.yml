@@ -37,9 +37,10 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # Resolves to ghcr.io/<owner>/<repo> (lowercased by the action),
-          # e.g. ghcr.io/cisotoolbox/ciso-gophish.
-          images: ghcr.io/${{ github.repository }}
+          # Published as ghcr.io/<owner>/ciso-gophish (lowercased by the
+          # action), matching the deploy config and the README quickstart;
+          # the bare repo name (gophish) would not.
+          images: ghcr.io/${{ github.repository_owner }}/ciso-gophish
           tags: |
             type=ref,event=tag
             type=sha,format=long

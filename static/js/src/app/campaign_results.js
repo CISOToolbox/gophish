@@ -134,8 +134,11 @@ var activeStatusFilter = null
 var statusFilterRegistered = false
 
 // resultRowMatchesStatusFilter decides whether a results-table row passes the
-// active donut filter. "Email Reported" is a boolean (column 7); the others are
-// the recipient's current status (column 6).
+// active donut filter. Matching is cumulative up the funnel so the number of
+// filtered rows equals the (cumulative) count shown on the donut: clicking
+// "Email Opened" keeps everyone who reached opened OR beyond (clicked,
+// submitted). "Email Reported" matches the reported flag (column 7); the other
+// stages use the recipient's current status (column 6) against progressListing.
 function resultRowMatchesStatusFilter(rowData) {
     if (!activeStatusFilter) {
         return true
@@ -143,7 +146,13 @@ function resultRowMatchesStatusFilter(rowData) {
     if (activeStatusFilter === "Email Reported") {
         return rowData[7] === true
     }
-    return rowData[6] === activeStatusFilter
+    var target = progressListing.indexOf(activeStatusFilter)
+    if (target < 0) {
+        // Status outside the funnel progression: exact match fallback.
+        return rowData[6] === activeStatusFilter
+    }
+    var current = progressListing.indexOf(rowData[6])
+    return current >= target
 }
 
 // ensureStatusFilterRegistered installs the DataTables custom search once.
@@ -628,11 +637,18 @@ var renderPieChart = function (chartopts) {
                     }).add();
                 },
                 render: function () {
+                    // Read the live point (poll() replaces the series data), so
+                    // the center count and percentage refresh instead of being
+                    // frozen at the initial load values.
+                    var point = this.series[0] && this.series[0].data[0]
+                    if (!point) {
+                        return
+                    }
                     this.innerText.attr({
-                        text: chartopts['data'][0].count
+                        text: point.options.count
                     })
                     this.pctText.attr({
-                        text: chartopts['data'][0].y + '%'
+                        text: point.y + '%'
                     })
                 }
             }

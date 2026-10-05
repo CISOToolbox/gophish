@@ -28,7 +28,7 @@ When **Ignore security scanner interactions** is enabled on a campaign, the phis
 
 So a genuine recipient clicking from an up-to-date browser is still counted even if it lands inside the window, while a clean-UA-but-outdated sandbox detonation is caught.
 
-The window, the minimum browser versions (per engine), and the list of risky User-Agent substrings are all editable by an admin under **Scanner Detection** in the console (no config file or restart needed). Set a minimum version to `0` to disable the outdated-browser check for that engine.
+The window, the minimum browser versions (per engine), and the list of risky User-Agent substrings are all editable by an admin under Settings → **Scanner Detection** (tab) (no config file or restart needed). Set a minimum version to `0` to disable the outdated-browser check for that engine.
 
 Matched interactions are recorded on the timeline as **`Clicked Link (scanner)`** / **`Email Opened (scanner)`** for transparency, but they do **not** advance the recipient's status, so they are excluded from the funnel. A genuine open/click from the same recipient afterwards is counted normally. Form submissions (POST) are always counted. The option is **off by default**.
 

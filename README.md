@@ -20,7 +20,7 @@ Unlike the other CISO Toolbox modules, **this tool does not integrate into the u
 What this fork adds on top of upstream gophish:
 
 - **Educational Pages** — a managed entity (full CRUD) selectable per campaign, shown to recipients after they submit the landing-page form. The per-page "Redirect to" URL has been retired in favor of these.
-- **Security-scanner handling** — an opt-in per-campaign option that detects mail sandbox / Safe Links detonations (by send-time window and outdated-browser / scanner user-agent) and logs them separately instead of counting them as recipient opens/clicks. The user-agent list, minimum browser versions and time window are editable from a **Scanner Detection** admin page.
+- **Security-scanner handling** — an opt-in per-campaign option that detects mail sandbox / Safe Links detonations (by send-time window and outdated-browser / scanner user-agent) and logs them separately instead of counting them as recipient opens/clicks. The user-agent list, minimum browser versions and time window are editable from the **Scanner Detection** tab of the Settings page (admin).
 - **Read-only cross-user campaign visibility** — a `view_all_campaigns` permission and a read-only `auditor` role so chosen accounts can see every user's campaigns and results without being able to modify anything.
 - **Security audit log** — an append-only log of authentication and sensitive admin actions (logins, campaign create/launch/delete/complete, user changes, API-key resets).
 - **Manual report declaration** — admins can record an out-of-band report (channel + time) for a recipient.

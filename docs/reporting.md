@@ -16,6 +16,8 @@ Each recipient advances through a funnel. The campaign summary aggregates the co
 
 Counts are **cumulative up the funnel**: a submission also counts as a click and an open, so the numbers are internally consistent (every "submitted" is also "clicked", etc.). An **Error** count tracks recipients whose send failed.
 
+On the campaign results page each funnel stage is shown as a **donut** displaying the count and, below it, the percentage of recipients. The donuts are **clickable**: clicking one filters the results table to the recipients **at that status** (for *Email Reported*, those who reported); click it again, or use **Clear filter**, to remove the filter.
+
 ## Events timeline
 
 Beyond the aggregate counts, each result has a timeline of individual **events** (with timestamps and details such as browser/user-agent for opens and clicks). This lets you see exactly when and how a given target interacted.
@@ -30,7 +32,7 @@ If a campaign has **[Ignore security scanner interactions](campaigns.md#ignoring
 
 ## Declaring a report manually
 
-Recipients often report a simulated phish **out of band** — to the helpdesk, over Slack/Teams, or by phone — rather than through an automated button. An admin can record these: on the campaign results table, click the report icon in the **Reported** column for a recipient and specify the **channel** (e.g. Email, Slack, Phone) and the **time** it was reported. This flags the result as reported (counted in the funnel) and adds a timeline event noting it was a manual report and through which channel.
+Recipients often report a simulated phish **out of band** — to the helpdesk, over Slack/Teams, or by phone — rather than through an automated button. An admin can record these: on the campaign results table, click the report icon in the **Reported** column for a recipient and specify the **channel** (e.g. Email, Slack, Phone) and the **time** it was reported. This flags the result as reported (counted in the funnel) and adds a timeline event — placed at the **specified time**, so it appears in its correct chronological position in the recipient's timeline — noting it was a manual report and through which channel.
 
 ## Exporting
 

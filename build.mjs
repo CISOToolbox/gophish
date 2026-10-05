@@ -73,7 +73,6 @@ const plainScripts = [
   'educational_pages',
   'groups',
   'landing_pages',
-  'scanner',
   'sending_profiles',
   'settings',
   'templates',

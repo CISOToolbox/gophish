@@ -129,6 +129,82 @@ var progressListing = [
     "Submitted Data"
 ]
 
+// ── Results status filter (driven by clicking the donut charts) ──────────────
+var activeStatusFilter = null
+var statusFilterRegistered = false
+
+// resultRowMatchesStatusFilter decides whether a results-table row passes the
+// active donut filter. Matching is cumulative up the funnel so the number of
+// filtered rows equals the (cumulative) count shown on the donut: clicking
+// "Email Opened" keeps everyone who reached opened OR beyond (clicked,
+// submitted). "Email Reported" matches the reported flag (column 7); the other
+// stages use the recipient's current status (column 6) against progressListing.
+function resultRowMatchesStatusFilter(rowData) {
+    if (!activeStatusFilter) {
+        return true
+    }
+    if (activeStatusFilter === "Email Reported") {
+        return rowData[7] === true
+    }
+    var target = progressListing.indexOf(activeStatusFilter)
+    if (target < 0) {
+        // Status outside the funnel progression: exact match fallback.
+        return rowData[6] === activeStatusFilter
+    }
+    var current = progressListing.indexOf(rowData[6])
+    return current >= target
+}
+
+// ensureStatusFilterRegistered installs the DataTables custom search once.
+function ensureStatusFilterRegistered() {
+    if (statusFilterRegistered) {
+        return
+    }
+    statusFilterRegistered = true
+    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+        if (settings.nTable.id !== "resultsTable") {
+            return true
+        }
+        return resultRowMatchesStatusFilter(settings.aoData[dataIndex]._aData)
+    })
+}
+
+function updateStatusFilterBar() {
+    var bar = $("#statusFilterBar")
+    if (!bar.length) {
+        return
+    }
+    if (activeStatusFilter) {
+        bar.html('Showing only <b>' + escapeHtml(activeStatusFilter) + '</b> results ' +
+            '<button type="button" class="btn btn-xs btn-default" onclick="clearResultStatusFilter()">' +
+            '<i class="fa fa-times"></i> Clear filter</button>').show()
+    } else {
+        bar.empty().hide()
+    }
+}
+
+// toggleResultStatusFilter is called when a donut chart is clicked. Clicking the
+// same status again clears the filter.
+function toggleResultStatusFilter(status) {
+    if (!status) {
+        return
+    }
+    activeStatusFilter = (activeStatusFilter === status) ? null : status
+    updateStatusFilterBar()
+    if (typeof resultsTable !== "undefined" && resultsTable) {
+        resultsTable.draw()
+    }
+}
+
+function clearResultStatusFilter() {
+    activeStatusFilter = null
+    updateStatusFilterBar()
+    if (typeof resultsTable !== "undefined" && resultsTable) {
+        resultsTable.draw()
+    }
+}
+window.clearResultStatusFilter = clearResultStatusFilter
+
 var campaign = {}
 var bubbles = []
 
@@ -542,7 +618,8 @@ var renderPieChart = function (chartopts) {
                         pie = chart.series[0],
                         left = chart.plotLeft + pie.center[0],
                         top = chart.plotTop + pie.center[1];
-                    this.innerText = rend.text(chartopts['data'][0].count, left, top).
+                    // Count (centered, slightly raised to make room for the percentage below).
+                    this.innerText = rend.text(chartopts['data'][0].count, left, top - 4).
                     attr({
                         'text-anchor': 'middle',
                         'font-size': '24px',
@@ -550,10 +627,28 @@ var renderPieChart = function (chartopts) {
                         'fill': chartopts['colors'][0],
                         'font-family': 'Helvetica,Arial,sans-serif'
                     }).add();
+                    // Percentage, displayed just below the count.
+                    this.pctText = rend.text(chartopts['data'][0].y + '%', left, top + 16).
+                    attr({
+                        'text-anchor': 'middle',
+                        'font-size': '13px',
+                        'fill': '#6c7a89',
+                        'font-family': 'Helvetica,Arial,sans-serif'
+                    }).add();
                 },
                 render: function () {
+                    // Read the live point (poll() replaces the series data), so
+                    // the center count and percentage refresh instead of being
+                    // frozen at the initial load values.
+                    var point = this.series[0] && this.series[0].data[0]
+                    if (!point) {
+                        return
+                    }
                     this.innerText.attr({
-                        text: chartopts['data'][0].count
+                        text: point.options.count
+                    })
+                    this.pctText.attr({
+                        text: point.y + '%'
                     })
                 }
             }
@@ -564,8 +659,18 @@ var renderPieChart = function (chartopts) {
         plotOptions: {
             pie: {
                 innerSize: '80%',
+                cursor: 'pointer',
                 dataLabels: {
                     enabled: false
+                },
+                point: {
+                    events: {
+                        // Clicking a donut filters the results table to the
+                        // rows at that status (toggles off when clicked again).
+                        click: function () {
+                            toggleResultStatusFilter(chartopts['name'])
+                        }
+                    }
                 }
             }
         },
@@ -981,6 +1086,7 @@ $(document).ready(function () {
             useUTC: false
         }
     })
+    ensureStatusFilterRegistered();
     load();
 
     // Start the polling loop

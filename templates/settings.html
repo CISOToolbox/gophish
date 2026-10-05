@@ -13,6 +13,10 @@
                 Settings</a></li>
         <li role="reportingSettings"><a href="#reportingSettings" aria-controls="reportingSettings" role="tab" id="reporttab"
             data-toggle="tab">Reporting Settings</a></li>
+        {{if .ModifySystem}}
+        <li role="scannerSettings"><a href="#scannerSettings" aria-controls="scannerSettings" role="tab"
+                data-toggle="tab">Scanner Detection</a></li>
+        {{end}}
     </ul>
     <!-- Tab Panes -->
     <div class="tab-content">
@@ -244,6 +248,46 @@
         </form>
         </div>
         <!-- Reporting Settings End -->
+        {{if .ModifySystem}}
+        <div role="tabpanel" class="tab-pane" id="scannerSettings">
+            <br />
+            <p class="text-muted">
+                Tune how the per-campaign <em>“Ignore security scanner interactions”</em> option decides that an
+                open/click came from a mail security scanner or sandbox (e.g. Microsoft Defender Safe Links) rather
+                than a real recipient. An interaction is treated as a scanner when it happens within the time window
+                after sending <b>and</b> its User-Agent matches a risky string <b>or</b> an outdated browser version.
+            </p>
+            <form id="scannerForm">
+                <div class="form-group">
+                    <label class="control-label" for="window_seconds">Detection window (seconds after send)</label>
+                    <input type="number" min="0" class="form-control" id="window_seconds">
+                    <span class="help-block">Interactions later than this after the email was sent are never treated as scanners.</span>
+                </div>
+                <div class="row">
+                    <div class="col-sm-4 form-group">
+                        <label class="control-label" for="min_chrome">Min. Chrome/Edge version</label>
+                        <input type="number" min="0" class="form-control" id="min_chrome">
+                    </div>
+                    <div class="col-sm-4 form-group">
+                        <label class="control-label" for="min_firefox">Min. Firefox version</label>
+                        <input type="number" min="0" class="form-control" id="min_firefox">
+                    </div>
+                    <div class="col-sm-4 form-group">
+                        <label class="control-label" for="min_safari">Min. Safari version</label>
+                        <input type="number" min="0" class="form-control" id="min_safari">
+                    </div>
+                </div>
+                <span class="help-block">A browser whose major version is below the minimum for its engine is treated as outdated (a sandbox tell — Safe Links pins an old Chrome). Set <code>0</code> to disable the version check for that engine.</span>
+                <div class="form-group">
+                    <label class="control-label" for="user_agents">Risky User-Agent substrings (one per line)</label>
+                    <textarea class="form-control" id="user_agents" rows="12" style="font-family:monospace;"></textarea>
+                    <span class="help-block">Case-insensitive substring match against the interaction's User-Agent.</span>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="saveScannerSettings()"><i class="fa fa-save"></i> Save</button>
+            </form>
+        </div>
+        {{end}}
+        <!-- Scanner Detection End -->
     </div>
 </div>
 {{end}} {{define "scripts"}}

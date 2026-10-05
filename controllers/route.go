@@ -137,7 +137,6 @@ func (as *AdminServer) registerRoutes() {
 	router.HandleFunc("/settings", mid.Use(as.Settings, mid.RequireLogin))
 	router.HandleFunc("/users", mid.Use(as.UserManagement, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 	router.HandleFunc("/webhooks", mid.Use(as.Webhooks, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
-	router.HandleFunc("/scanner_detection", mid.Use(as.ScannerDetection, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 	router.HandleFunc("/impersonate", mid.Use(as.Impersonate, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 	// Create the API routes
 	api := api.NewServer(
@@ -249,13 +248,6 @@ func (as *AdminServer) EducationalPages(w http.ResponseWriter, r *http.Request) 
 	params := newTemplateParams(r)
 	params.Title = "Educational Pages"
 	getTemplate(w, "educational_pages").ExecuteTemplate(w, "base", params)
-}
-
-// ScannerDetection renders the admin page for tuning security-scanner detection.
-func (as *AdminServer) ScannerDetection(w http.ResponseWriter, r *http.Request) {
-	params := newTemplateParams(r)
-	params.Title = "Scanner Detection"
-	getTemplate(w, "scanner").ExecuteTemplate(w, "base", params)
 }
 
 // SendingProfiles handles the default path and template execution

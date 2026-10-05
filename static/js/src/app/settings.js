@@ -269,4 +269,48 @@ $(document).ready(function () {
     })
 
     loadIMAPSettings()
+
+    // Scanner Detection tab (admin only). Only wire it when the form is present.
+    if ($("#scannerForm").length) {
+        loadScannerSettings()
+        $("#scannerForm").on("submit", function (e) {
+            e.preventDefault()
+            saveScannerSettings()
+            return false
+        })
+    }
 })
+
+// loadScannerSettings populates the Scanner Detection tab from the API.
+function loadScannerSettings() {
+    api.scanner.get()
+        .success(function (s) {
+            $("#window_seconds").val(s.window_seconds)
+            $("#min_chrome").val(s.min_chrome)
+            $("#min_firefox").val(s.min_firefox)
+            $("#min_safari").val(s.min_safari)
+            $("#user_agents").val(s.user_agents || "")
+        })
+        .error(function () {
+            errorFlash("Error fetching scanner settings")
+        })
+}
+
+// saveScannerSettings persists the Scanner Detection tab via the API.
+function saveScannerSettings() {
+    var settings = {
+        window_seconds: parseInt($("#window_seconds").val(), 10) || 0,
+        min_chrome: parseInt($("#min_chrome").val(), 10) || 0,
+        min_firefox: parseInt($("#min_firefox").val(), 10) || 0,
+        min_safari: parseInt($("#min_safari").val(), 10) || 0,
+        user_agents: $("#user_agents").val()
+    }
+    api.scanner.put(settings)
+        .success(function () {
+            successFlash("Scanner settings saved")
+        })
+        .error(function (data) {
+            errorFlash((data.responseJSON && data.responseJSON.message) || "Error saving scanner settings")
+        })
+}
+window.saveScannerSettings = saveScannerSettings
